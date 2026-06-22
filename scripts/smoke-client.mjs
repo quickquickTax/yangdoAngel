@@ -44,6 +44,23 @@ try {
     }
   }
 
+  const prompts = await client.listPrompts();
+  const startPrompt = prompts.prompts.find(
+    (prompt) => prompt.name === "start_capital_gains_tax_review"
+  );
+  if (!startPrompt) {
+    throw new Error("The contract-photo start prompt is missing.");
+  }
+  const promptResult = await client.getPrompt({ name: startPrompt.name });
+  const promptText = promptResult.messages
+    .map((message) =>
+      message.content.type === "text" ? message.content.text : ""
+    )
+    .join("\n");
+  if (!promptText.includes("양도계약서") || !promptText.includes("주민등록번호")) {
+    throw new Error("The start prompt is missing contract or privacy guidance.");
+  }
+
   const validation = await client.callTool({
     name: "validate_capital_gains_case",
     arguments: {
