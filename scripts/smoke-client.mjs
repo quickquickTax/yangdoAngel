@@ -25,12 +25,10 @@ try {
   const tools = await client.listTools();
   console.log("TOOLS", tools.tools.map((tool) => tool.name));
   for (const tool of tools.tools) {
-    if (
-      !tool.description?.includes(
-        "Korean Capital Gains Tax Advisor(한국 양도소득세 도우미)"
-      )
-    ) {
-      throw new Error(`Tool ${tool.name} is missing the bilingual service name.`);
+    if (!tool.description?.includes("바로바로 양도소득세")) {
+      throw new Error(
+        `Tool ${tool.name} is missing the service name 바로바로 양도소득세.`
+      );
     }
     const annotations = tool.annotations;
     if (

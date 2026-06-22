@@ -8,8 +8,7 @@ import { runValidation } from "./tools/validate-capital-gains-case.js";
 import { runCalculation } from "./tools/calculate-capital-gains-tax.js";
 import { getSupportedScenarios } from "./tools/list-supported-scenarios.js";
 
-export const SERVICE_DISPLAY_NAME =
-  "Korean Capital Gains Tax Advisor(한국 양도소득세 도우미)";
+export const SERVICE_DISPLAY_NAME = "바로바로 양도소득세";
 
 export const INITIAL_CONTRACT_REQUEST =
   "양도소득세 검토를 시작하려면 양도계약서와 취득계약서 사진을 올려달라고 안내하세요. " +
