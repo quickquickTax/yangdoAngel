@@ -33,6 +33,16 @@ describe("case validation", () => {
     expect(result.status).toBe("complete");
   });
 
+  it("applies the domestic registered service scope without user input", () => {
+    const input = validCase();
+    const { domestic: _domestic, registered: _registered, ...asset } =
+      input.asset;
+    const result = runValidation({ ...input, asset });
+
+    expect(result.validForCalculation).toBe(true);
+    expect(result.status).toBe("complete");
+  });
+
   it("rejects joint shares not summing to 100", () => {
     const input = validCase();
     input.ownership = {

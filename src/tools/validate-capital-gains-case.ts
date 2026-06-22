@@ -1,17 +1,21 @@
 import type { CapitalGainsCase } from "../domain/types.js";
 import { validateCapitalGainsCase } from "../domain/validation.js";
-import { CapitalGainsCaseSchema } from "./schemas.js";
+import {
+  applyServiceScope,
+  applyServiceScopeToPartial,
+  CapitalGainsCaseSchema
+} from "./schemas.js";
 
 export function runValidation(caseData: Record<string, unknown>) {
   const parsed = CapitalGainsCaseSchema.safeParse(caseData);
   if (parsed.success) {
-    return validateCapitalGainsCase(parsed.data);
+    return validateCapitalGainsCase(applyServiceScope(parsed.data));
   }
 
   let domainResult;
   try {
     domainResult = validateCapitalGainsCase(
-      caseData as unknown as Partial<CapitalGainsCase>
+      applyServiceScopeToPartial(caseData) as Partial<CapitalGainsCase>
     );
   } catch {
     domainResult = {

@@ -1,4 +1,5 @@
 import * as z from "zod/v4";
+import type { CapitalGainsCase } from "../domain/types.js";
 
 export const ExpenseSchema = z.object({
   type: z.enum([
@@ -30,9 +31,7 @@ export const CapitalGainsCaseSchema = z.object({
       "land_nonbusiness",
       "land_nonbusiness_adj",
       "building"
-    ]),
-    domestic: z.boolean(),
-    registered: z.boolean()
+    ])
   }),
   transfer: z.object({
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -71,6 +70,39 @@ export const CapitalGainsCaseSchema = z.object({
     otherTransfersExist: z.boolean()
   })
 });
+
+export type CapitalGainsCaseInput = z.infer<typeof CapitalGainsCaseSchema>;
+
+export function applyServiceScope(
+  caseData: CapitalGainsCaseInput
+): CapitalGainsCase {
+  return {
+    ...caseData,
+    asset: {
+      ...caseData.asset,
+      domestic: true,
+      registered: true
+    }
+  };
+}
+
+export function applyServiceScopeToPartial(
+  caseData: Record<string, unknown>
+): Partial<CapitalGainsCase> {
+  const asset = caseData.asset;
+  if (!asset || typeof asset !== "object" || Array.isArray(asset)) {
+    return caseData as Partial<CapitalGainsCase>;
+  }
+
+  return {
+    ...caseData,
+    asset: {
+      ...(asset as Record<string, unknown>),
+      domestic: true,
+      registered: true
+    }
+  } as Partial<CapitalGainsCase>;
+}
 
 export const ValidationToolInputSchema = {
   caseData: z

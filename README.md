@@ -34,6 +34,8 @@
 
 계산 전에 필수 입력, 날짜, 소유 지분, 비과세 조건, 필요경비 증빙과 지원 범위를 검사합니다.
 
+서비스 범위는 국내 등기 자산으로 고정되어 있으며, 국내 자산 여부와 등기 여부는 사용자에게 별도로 입력받지 않습니다.
+
 주요 결과:
 
 - `complete`: 계산 가능
@@ -88,7 +90,7 @@ AI는 먼저 `validate_capital_gains_case`를 호출하고, 검증을 통과한 
 
 ## 카카오클라우드 배포
 
-Agentic Player 10 제출용 배포에는 저장소 루트의 `Dockerfile.kakao`를 사용합니다.
+Agentic Player 10 제출용 배포에는 저장소 루트의 `Dockerfile`을 사용합니다. `Dockerfile.kakao`도 같은 배포 설정을 유지합니다.
 
 PlayMCP in KC의 `Git 소스 빌드` 화면에 다음 값을 입력합니다.
 

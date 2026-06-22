@@ -1,6 +1,9 @@
 import { calculateCapitalGainsTax } from "../domain/calculator.js";
-import type { CapitalGainsCase } from "../domain/types.js";
+import {
+  applyServiceScope,
+  type CapitalGainsCaseInput
+} from "./schemas.js";
 
-export function runCalculation(caseData: CapitalGainsCase) {
-  return calculateCapitalGainsTax(caseData);
+export function runCalculation(caseData: CapitalGainsCaseInput) {
+  return calculateCapitalGainsTax(applyServiceScope(caseData));
 }
