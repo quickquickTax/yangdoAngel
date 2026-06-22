@@ -24,11 +24,20 @@ try {
   await client.connect(transport);
   const tools = await client.listTools();
   console.log("TOOLS", tools.tools.map((tool) => tool.name));
+  const requiredDescriptionText = {
+    validate_capital_gains_case: "필수 입력값",
+    calculate_capital_gains_tax: "예상액",
+    list_supported_capital_gains_scenarios: "지원하는 세법 기준일"
+  };
   for (const tool of tools.tools) {
     if (!tool.description?.includes("바로바로 양도소득세")) {
       throw new Error(
         `Tool ${tool.name} is missing the service name 바로바로 양도소득세.`
       );
+    }
+    const requiredText = requiredDescriptionText[tool.name];
+    if (!requiredText || !tool.description.includes(requiredText)) {
+      throw new Error(`Tool ${tool.name} is missing its Korean description.`);
     }
     const annotations = tool.annotations;
     if (
