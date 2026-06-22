@@ -1,2 +1,176 @@
-# yangdoAngel
-Korean capital gains tax calculator MCP
+# Korean Capital Gains Tax Advisor
+
+**한국 양도소득세 도우미**는 대한민국 부동산 양도 사건을 구조화하고, 계산 가능 여부를 먼저 검증한 뒤 예상 양도소득세와 개인지방소득세를 설명 가능한 형태로 계산하는 MCP 서버입니다.
+
+> 이 서비스의 결과는 검토용 예상값이며 확정 신고세액이나 세무 자문이 아닙니다. 현재 세법 규칙은 `pending_professional_review` 상태입니다.
+
+## 서비스가 해결하는 문제
+
+부동산 양도소득세는 자산 유형, 취득·양도 시점, 필요경비, 보유·거주기간, 주택 수, 공동명의 여부에 따라 결과가 달라집니다. 사용자가 일부 조건을 누락한 채 바로 계산하면 잘못된 결과가 나올 위험이 큽니다.
+
+이 MCP는 다음 순서로 동작합니다.
+
+1. 입력 사건이 계산 가능한지 검증합니다.
+2. 누락값, 모순된 조건, 미지원 사건을 구분합니다.
+3. 검증을 통과한 사건만 결정론적으로 계산합니다.
+4. 세액, 계산 단계, 적용 규칙 버전과 주의사항을 반환합니다.
+
+## 주요 기능
+
+- 양도가액·취득가액·필요경비 기반 양도차익 계산
+- 보유기간과 거주기간 검증
+- 장기보유특별공제와 기본공제 계산
+- 양도소득세와 개인지방소득세 계산
+- 단독명의·공동명의 지분별 계산
+- 공동명의와 단독명의 가정 결과 비교
+- 1세대 1주택 비과세 요청의 일관성 검증
+- 규칙 적용기간과 양도일 불일치 차단
+- 상속·증여 취득과 동일 연도 복수 양도 등 미지원 사건 차단
+- 증빙이 확인되지 않은 필요경비 차단
+
+## MCP 도구
+
+### `validate_capital_gains_case`
+
+계산 전에 필수 입력, 날짜, 소유 지분, 비과세 조건, 필요경비 증빙과 지원 범위를 검사합니다.
+
+주요 결과:
+
+- `complete`: 계산 가능
+- `invalid`: 입력 누락 또는 모순
+- `unsupported`: 현재 엔진의 지원 범위 밖
+- `validForCalculation`: 계산 도구 호출 가능 여부
+- `issues`: 수정하거나 확인해야 할 항목
+
+### `calculate_capital_gains_tax`
+
+검증된 사건을 받아 예상 양도소득세와 개인지방소득세를 계산합니다.
+
+주요 결과:
+
+- 총 예상세액
+- 양도소득세와 개인지방소득세
+- 양도차익, 공제액과 과세표준
+- 적용 세율 유형
+- 공동명의 소유자별 결과
+- 규칙 버전, 가정과 경고
+
+### `list_supported_capital_gains_scenarios`
+
+지원 기준일, 계산 가능한 사건, 미지원 사건과 사용상 주의사항을 반환합니다.
+
+## 대화 사용 예시
+
+```text
+사용자: 2018년에 3억원에 산 아파트를 2026년에 6억원에 팔 예정입니다.
+       취득세와 중개수수료로 2천만원을 지출했습니다. 예상 세금을 계산해 주세요.
+
+AI: 계산에 필요한 주택 수, 거주기간, 조정대상지역 여부,
+    비과세 적용 요청과 증빙 상태를 추가로 확인합니다.
+```
+
+AI는 먼저 `validate_capital_gains_case`를 호출하고, 검증을 통과한 경우에만 `calculate_capital_gains_tax`를 호출해야 합니다.
+
+## PlayMCP 호환성
+
+- MCP 프로토콜: `2025-03-26` ~ `2025-11-25`
+- 전송 방식: Streamable HTTP
+- 서버 방식: Stateless
+- 도구 개수: 3개
+- 도구 이름: PlayMCP 문자 규칙 준수
+- 도구 설명: 영문 중심, 영문·국문 서비스명 병기
+- 필수 annotations 제공
+  - `title`
+  - `readOnlyHint=true`
+  - `destructiveHint=false`
+  - `openWorldHint=false`
+  - `idempotentHint=true`
+
+## 카카오클라우드 배포
+
+Agentic Player 10 제출용 배포에는 저장소 루트의 `Dockerfile.kakao`를 사용합니다.
+
+PlayMCP in KC의 `Git 소스 빌드` 화면에 다음 값을 입력합니다.
+
+```text
+Git URL: 이 저장소의 URL
+브랜치/ref: main
+Dockerfile 경로: Dockerfile.kakao
+PAT: 공개 저장소라면 비워두기
+```
+
+카카오용 이미지는 다음 조건으로 실행됩니다.
+
+- `linux/amd64`
+- Node.js 20
+- 컨테이너 포트 `3000`
+- `POST /mcp`: MCP Endpoint
+- `GET /health`: 상태 확인
+- API 키와 Authorization 헤더 불필요
+- 사용자 입력과 계산 결과를 서버에 저장하지 않음
+- 요청 본문을 로그에 기록하지 않음
+
+상세 절차는 [`docs/kakao-cloud-deployment.md`](docs/kakao-cloud-deployment.md)를 참고하세요.
+
+## 로컬 검증
+
+```bash
+npm ci
+npm run check
+npm run smoke:http:kakao
+```
+
+검증 항목:
+
+- TypeScript 빌드
+- 단위·회귀 테스트 33개
+- Streamable HTTP 초기화
+- 도구 목록과 PlayMCP annotations
+- 무인증 Endpoint 호출
+
+카카오용 Docker 이미지 직접 빌드:
+
+```bash
+docker build --platform linux/amd64 \
+  -f Dockerfile.kakao \
+  -t kr-capital-gains-tax-mcp:kakao .
+```
+
+## 프로젝트 구조
+
+```text
+src/
+├─ http-server.ts          Streamable HTTP 서버
+├─ mcp-server.ts           MCP 도구 등록과 annotations
+├─ domain/                 계산·검증 도메인 로직
+├─ rules/                  기준일별 세법 규칙 데이터
+└─ tools/                  MCP 입력 스키마와 도구 어댑터
+
+tests/
+├─ unit/                   날짜·세율·검증·공동명의 테스트
+└─ regression/             대표 계산 사례 회귀 테스트
+```
+
+## 안전장치
+
+- 누락값을 임의로 추정하지 않습니다.
+- 검증 실패 사건은 계산하지 않습니다.
+- 규칙 적용기간 밖의 사건은 계산하지 않습니다.
+- 미검증 비과세 요청은 계산하지 않습니다.
+- 무증빙·기타 필요경비는 자동 공제하지 않습니다.
+- 각 결과에 규칙 버전, 가정과 경고를 포함합니다.
+- 계산 도구는 외부 상태를 변경하지 않습니다.
+
+## 현재 지원하지 않는 사건
+
+- 동일 과세기간 복수 양도와 양도차손 통산
+- 상속·증여·부담부증여 취득
+- 일시적 2주택, 상속주택과 특례주택 판정
+- 조합원입주권과 분양권
+- 감면, 가산세, 외국납부세액
+- 국외 자산, 법인과 비거주자
+- 전자신고와 신고서 자동 제출
+
+## 중요 고지
+
+현재 규칙 데이터는 공식 법령과 신고 서식에 대한 최종 전문 검토가 완료되지 않았습니다. 실제 신고, 납세 의사결정 또는 고객 제공 전에는 세무 전문가의 검토가 필요합니다.
