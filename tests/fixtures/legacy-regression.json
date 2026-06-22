@@ -1,0 +1,408 @@
+[
+  {
+    "id": "general_housing_8y",
+    "input": {
+      "transferPrice": 600000000,
+      "acquisitionPrice": 300000000,
+      "necessaryExpense": 20000000,
+      "acquisitionDate": "2018-01-01",
+      "transferDate": "2026-06-01",
+      "residenceYears": 0,
+      "assetSubType": "housing",
+      "houseCount": 1,
+      "isAdjustedArea": false,
+      "isUnregistered": false,
+      "is1h1h": false
+    },
+    "expected": {
+      "holdingYears": 8,
+      "exempt": false,
+      "transferGain": 280000000,
+      "ltcAmount": 44800000,
+      "capitalGainAmt": 235200000,
+      "basicDeduction": 2500000,
+      "taxBase": 232700000,
+      "incomeTax": 68486000,
+      "localTax": 6848600,
+      "totalTax": 75334600,
+      "rateType": "basic"
+    }
+  },
+  {
+    "id": "housing_under_1y",
+    "input": {
+      "transferPrice": 500000000,
+      "acquisitionPrice": 300000000,
+      "necessaryExpense": 10000000,
+      "acquisitionDate": "2025-08-01",
+      "transferDate": "2026-06-01",
+      "residenceYears": 0,
+      "assetSubType": "housing",
+      "houseCount": 1,
+      "isAdjustedArea": false,
+      "isUnregistered": false,
+      "is1h1h": false
+    },
+    "expected": {
+      "holdingYears": 0,
+      "exempt": false,
+      "transferGain": 190000000,
+      "ltcAmount": 0,
+      "capitalGainAmt": 190000000,
+      "basicDeduction": 2500000,
+      "taxBase": 187500000,
+      "incomeTax": 131249999,
+      "localTax": 13124999,
+      "totalTax": 144374998,
+      "rateType": "shortterm"
+    }
+  },
+  {
+    "id": "housing_1_to_2y",
+    "input": {
+      "transferPrice": 500000000,
+      "acquisitionPrice": 300000000,
+      "necessaryExpense": 10000000,
+      "acquisitionDate": "2025-01-01",
+      "transferDate": "2026-06-01",
+      "residenceYears": 0,
+      "assetSubType": "housing",
+      "houseCount": 1,
+      "isAdjustedArea": false,
+      "isUnregistered": false,
+      "is1h1h": false
+    },
+    "expected": {
+      "holdingYears": 1,
+      "exempt": false,
+      "transferGain": 190000000,
+      "ltcAmount": 0,
+      "capitalGainAmt": 190000000,
+      "basicDeduction": 2500000,
+      "taxBase": 187500000,
+      "incomeTax": 112500000,
+      "localTax": 11250000,
+      "totalTax": 123750000,
+      "rateType": "shortterm"
+    }
+  },
+  {
+    "id": "building_general",
+    "input": {
+      "transferPrice": 900000000,
+      "acquisitionPrice": 500000000,
+      "necessaryExpense": 20000000,
+      "acquisitionDate": "2020-01-01",
+      "transferDate": "2026-06-01",
+      "residenceYears": 0,
+      "assetSubType": "building",
+      "houseCount": 0,
+      "isAdjustedArea": false,
+      "isUnregistered": false,
+      "is1h1h": false
+    },
+    "expected": {
+      "holdingYears": 6,
+      "exempt": false,
+      "transferGain": 380000000,
+      "ltcAmount": 45600000,
+      "capitalGainAmt": 334400000,
+      "basicDeduction": 2500000,
+      "taxBase": 331900000,
+      "incomeTax": 106820000,
+      "localTax": 10682000,
+      "totalTax": 117502000,
+      "rateType": "basic"
+    }
+  },
+  {
+    "id": "business_land",
+    "input": {
+      "transferPrice": 700000000,
+      "acquisitionPrice": 400000000,
+      "necessaryExpense": 15000000,
+      "acquisitionDate": "2017-01-01",
+      "transferDate": "2026-06-01",
+      "residenceYears": 0,
+      "assetSubType": "land_business",
+      "houseCount": 0,
+      "isAdjustedArea": false,
+      "isUnregistered": false,
+      "is1h1h": false
+    },
+    "expected": {
+      "holdingYears": 9,
+      "exempt": false,
+      "transferGain": 285000000,
+      "ltcAmount": 51300000,
+      "capitalGainAmt": 233700000,
+      "basicDeduction": 2500000,
+      "taxBase": 231200000,
+      "incomeTax": 67916000,
+      "localTax": 6791600,
+      "totalTax": 74707600,
+      "rateType": "basic"
+    }
+  },
+  {
+    "id": "nonbusiness_land",
+    "input": {
+      "transferPrice": 700000000,
+      "acquisitionPrice": 400000000,
+      "necessaryExpense": 15000000,
+      "acquisitionDate": "2017-01-01",
+      "transferDate": "2026-06-01",
+      "residenceYears": 0,
+      "assetSubType": "land_nonbusiness",
+      "houseCount": 0,
+      "isAdjustedArea": false,
+      "isUnregistered": false,
+      "is1h1h": false
+    },
+    "expected": {
+      "holdingYears": 9,
+      "exempt": false,
+      "transferGain": 285000000,
+      "ltcAmount": 51300000,
+      "capitalGainAmt": 233700000,
+      "basicDeduction": 2500000,
+      "taxBase": 231200000,
+      "incomeTax": 91036000,
+      "localTax": 9103600,
+      "totalTax": 100139600,
+      "rateType": "heavy"
+    }
+  },
+  {
+    "id": "one_house_exempt",
+    "input": {
+      "transferPrice": 1100000000,
+      "acquisitionPrice": 500000000,
+      "necessaryExpense": 20000000,
+      "acquisitionDate": "2015-01-01",
+      "transferDate": "2026-06-01",
+      "residenceYears": 7,
+      "assetSubType": "housing_1h1h",
+      "houseCount": 1,
+      "isAdjustedArea": false,
+      "isUnregistered": false,
+      "is1h1h": true
+    },
+    "expected": {
+      "holdingYears": 11,
+      "exempt": true,
+      "transferGain": 0,
+      "ltcAmount": 0,
+      "capitalGainAmt": 0,
+      "basicDeduction": 0,
+      "taxBase": 0,
+      "incomeTax": 0,
+      "localTax": 0,
+      "totalTax": 0,
+      "rateType": null
+    }
+  },
+  {
+    "id": "one_house_high_value",
+    "input": {
+      "transferPrice": 1500000000,
+      "acquisitionPrice": 700000000,
+      "necessaryExpense": 30000000,
+      "acquisitionDate": "2015-01-01",
+      "transferDate": "2026-06-01",
+      "residenceYears": 7,
+      "assetSubType": "housing_1h1h",
+      "houseCount": 1,
+      "isAdjustedArea": false,
+      "isUnregistered": false,
+      "is1h1h": true
+    },
+    "expected": {
+      "holdingYears": 11,
+      "exempt": false,
+      "transferGain": 154000000,
+      "ltcAmount": 104720000,
+      "capitalGainAmt": 49280000,
+      "basicDeduction": 2500000,
+      "taxBase": 46780000,
+      "incomeTax": 5757000,
+      "localTax": 575700,
+      "totalTax": 6332700,
+      "rateType": "basic"
+    }
+  },
+  {
+    "id": "ltc_3y",
+    "input": {
+      "transferPrice": 400000000,
+      "acquisitionPrice": 250000000,
+      "necessaryExpense": 10000000,
+      "acquisitionDate": "2023-06-01",
+      "transferDate": "2026-06-01",
+      "residenceYears": 0,
+      "assetSubType": "building",
+      "houseCount": 0,
+      "isAdjustedArea": false,
+      "isUnregistered": false,
+      "is1h1h": false
+    },
+    "expected": {
+      "holdingYears": 3,
+      "exempt": false,
+      "transferGain": 140000000,
+      "ltcAmount": 8400000,
+      "capitalGainAmt": 131600000,
+      "basicDeduction": 2500000,
+      "taxBase": 129100000,
+      "incomeTax": 29745000,
+      "localTax": 2974500,
+      "totalTax": 32719500,
+      "rateType": "basic"
+    }
+  },
+  {
+    "id": "ltc_15y",
+    "input": {
+      "transferPrice": 1000000000,
+      "acquisitionPrice": 300000000,
+      "necessaryExpense": 20000000,
+      "acquisitionDate": "2010-01-01",
+      "transferDate": "2026-06-01",
+      "residenceYears": 0,
+      "assetSubType": "building",
+      "houseCount": 0,
+      "isAdjustedArea": false,
+      "isUnregistered": false,
+      "is1h1h": false
+    },
+    "expected": {
+      "holdingYears": 16,
+      "exempt": false,
+      "transferGain": 680000000,
+      "ltcAmount": 204000000,
+      "capitalGainAmt": 476000000,
+      "basicDeduction": 2500000,
+      "taxBase": 473500000,
+      "incomeTax": 163460000,
+      "localTax": 16346000,
+      "totalTax": 179806000,
+      "rateType": "basic"
+    }
+  },
+  {
+    "id": "capital_loss",
+    "input": {
+      "transferPrice": 300000000,
+      "acquisitionPrice": 350000000,
+      "necessaryExpense": 10000000,
+      "acquisitionDate": "2020-01-01",
+      "transferDate": "2026-06-01",
+      "residenceYears": 0,
+      "assetSubType": "housing",
+      "houseCount": 1,
+      "isAdjustedArea": false,
+      "isUnregistered": false,
+      "is1h1h": false
+    },
+    "expected": {
+      "holdingYears": 6,
+      "exempt": false,
+      "transferGain": -60000000,
+      "ltcAmount": 0,
+      "capitalGainAmt": 0,
+      "basicDeduction": 0,
+      "taxBase": 0,
+      "incomeTax": 0,
+      "localTax": 0,
+      "totalTax": 0,
+      "rateType": null
+    }
+  },
+  {
+    "id": "small_gain_zero_base",
+    "input": {
+      "transferPrice": 302000000,
+      "acquisitionPrice": 300000000,
+      "necessaryExpense": 0,
+      "acquisitionDate": "2020-01-01",
+      "transferDate": "2026-06-01",
+      "residenceYears": 0,
+      "assetSubType": "housing",
+      "houseCount": 1,
+      "isAdjustedArea": false,
+      "isUnregistered": false,
+      "is1h1h": false
+    },
+    "expected": {
+      "holdingYears": 6,
+      "exempt": false,
+      "transferGain": 2000000,
+      "ltcAmount": 240000,
+      "capitalGainAmt": 1760000,
+      "basicDeduction": 2500000,
+      "taxBase": 0,
+      "incomeTax": 0,
+      "localTax": 0,
+      "totalTax": 0,
+      "rateType": "zero"
+    }
+  },
+  {
+    "id": "adjusted_two_houses",
+    "input": {
+      "transferPrice": 900000000,
+      "acquisitionPrice": 400000000,
+      "necessaryExpense": 20000000,
+      "acquisitionDate": "2018-01-01",
+      "transferDate": "2026-06-01",
+      "residenceYears": 0,
+      "assetSubType": "housing",
+      "houseCount": 2,
+      "isAdjustedArea": true,
+      "isUnregistered": false,
+      "is1h1h": false
+    },
+    "expected": {
+      "holdingYears": 8,
+      "exempt": false,
+      "transferGain": 480000000,
+      "ltcAmount": 0,
+      "capitalGainAmt": 480000000,
+      "basicDeduction": 2500000,
+      "taxBase": 477500000,
+      "incomeTax": 260560000,
+      "localTax": 26056000,
+      "totalTax": 286616000,
+      "rateType": "heavy"
+    }
+  },
+  {
+    "id": "unregistered",
+    "input": {
+      "transferPrice": 500000000,
+      "acquisitionPrice": 300000000,
+      "necessaryExpense": 10000000,
+      "acquisitionDate": "2018-01-01",
+      "transferDate": "2026-06-01",
+      "residenceYears": 0,
+      "assetSubType": "building",
+      "houseCount": 0,
+      "isAdjustedArea": false,
+      "isUnregistered": true,
+      "is1h1h": false
+    },
+    "expected": {
+      "holdingYears": 8,
+      "exempt": false,
+      "transferGain": 190000000,
+      "ltcAmount": 0,
+      "capitalGainAmt": 190000000,
+      "basicDeduction": 0,
+      "taxBase": 190000000,
+      "incomeTax": 132999999,
+      "localTax": 13299999,
+      "totalTax": 146299998,
+      "rateType": "unregistered"
+    }
+  }
+]

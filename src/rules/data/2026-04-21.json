@@ -1,0 +1,61 @@
+{
+  "ruleVersion": "KR-CGT-LEGACY-2026-04-21-v0.1",
+  "effectiveFrom": "2026-04-21",
+  "effectiveTo": null,
+  "verificationStatus": "pending_professional_review",
+  "sourceNote": "현재 규칙 데이터는 전문 검토 대기 상태입니다. 실무 사용 전 법률·시행령·시행규칙과 공식 서식에 대한 조문별 검증이 필요합니다.",
+  "highValueHousingThreshold": 1200000000,
+  "basicDeduction": 2500000,
+  "localIncomeTaxRate": 0.1,
+  "incomeTaxBrackets": [
+    { "upperLimit": 14000000, "rate": 0.06, "quickDeduction": 0 },
+    { "upperLimit": 50000000, "rate": 0.15, "quickDeduction": 1260000 },
+    { "upperLimit": 88000000, "rate": 0.24, "quickDeduction": 5760000 },
+    { "upperLimit": 150000000, "rate": 0.35, "quickDeduction": 15440000 },
+    { "upperLimit": 300000000, "rate": 0.38, "quickDeduction": 19940000 },
+    { "upperLimit": 500000000, "rate": 0.4, "quickDeduction": 25940000 },
+    { "upperLimit": 1000000000, "rate": 0.42, "quickDeduction": 35940000 },
+    { "upperLimit": null, "rate": 0.45, "quickDeduction": 65940000 }
+  ],
+  "shortTermRates": {
+    "housingUnderOneYear": 0.7,
+    "housingOneToTwoYears": 0.6,
+    "otherUnderOneYear": 0.5,
+    "otherOneToTwoYears": 0.4,
+    "unregistered": 0.7
+  },
+  "surcharges": {
+    "adjustedAreaTwoHouses": 0.2,
+    "adjustedAreaThreeOrMoreHouses": 0.3,
+    "nonBusinessLand": 0.1
+  },
+  "longTermDeduction": {
+    "general": {
+      "minimumHoldingYears": 3,
+      "initialRatePercent": 6,
+      "annualIncrementPercent": 2,
+      "maximumRatePercent": 30
+    },
+    "oneHouse": {
+      "minimumHoldingYears": 3,
+      "holdingInitialRatePercent": 12,
+      "holdingAnnualIncrementPercent": 4,
+      "holdingMaximumRatePercent": 40,
+      "minimumResidenceYears": 2,
+      "residenceInitialRatePercent": 8,
+      "residenceAnnualIncrementPercent": 4,
+      "residenceMaximumRatePercent": 40
+    }
+  },
+  "citations": {
+    "holdingPeriod": ["소득세법 제95조 제4항"],
+    "oneHouseExemption": ["소득세법 제89조 제1항 제3호"],
+    "transferGain": ["소득세법 제100조"],
+    "highValueHousing": ["소득세법 제95조 제3항"],
+    "longTermDeduction": ["소득세법 제95조 제2항"],
+    "basicDeduction": ["소득세법 제103조"],
+    "taxBase": ["소득세법 제92조 제2항 제3호"],
+    "incomeTax": ["소득세법 제104조", "소득세법 제55조 제1항"],
+    "localIncomeTax": ["지방세법 제103조의3"]
+  }
+}

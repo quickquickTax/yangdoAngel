@@ -1,0 +1,157 @@
+import { spawn } from "node:child_process";
+import { createServer } from "node:net";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+
+const cwd = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const remoteMcpUrl = process.env.MCP_URL;
+const authMode = process.argv.includes("--no-auth") ? "none" : "bearer";
+const apiKey =
+  process.env.MCP_API_KEY ?? "http-smoke-test-key-at-least-32-characters";
+
+if (authMode === "bearer" && remoteMcpUrl && !process.env.MCP_API_KEY) {
+  throw new Error("MCP_API_KEY is required when MCP_URL is provided.");
+}
+
+async function findAvailablePort() {
+  const probe = createServer();
+  await new Promise((resolveListen, reject) => {
+    probe.once("error", reject);
+    probe.listen(0, "127.0.0.1", resolveListen);
+  });
+  const address = probe.address();
+  const port = typeof address === "object" && address ? address.port : 0;
+  await new Promise((resolveClose) => probe.close(resolveClose));
+  if (!port) throw new Error("Could not allocate a test port.");
+  return port;
+}
+
+async function waitForHealth(url, child) {
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    if (child.exitCode !== null) {
+      throw new Error(`HTTP server exited early with code ${child.exitCode}.`);
+    }
+    try {
+      const response = await fetch(url);
+      if (response.ok) return;
+    } catch {
+      // The server may still be starting.
+    }
+    await new Promise((resolveWait) => setTimeout(resolveWait, 100));
+  }
+  throw new Error("Timed out waiting for the HTTP server health endpoint.");
+}
+
+let child;
+let mcpUrl;
+let healthUrl;
+
+if (remoteMcpUrl) {
+  mcpUrl = new URL(remoteMcpUrl);
+  healthUrl = new URL("/health", mcpUrl);
+} else {
+  const port = await findAvailablePort();
+  const baseUrl = `http://127.0.0.1:${port}`;
+  mcpUrl = new URL(`${baseUrl}/mcp`);
+  healthUrl = new URL(`${baseUrl}/health`);
+  child = spawn(process.execPath, [resolve(cwd, "dist/http-server.js")], {
+    cwd,
+    env: {
+      ...process.env,
+      HOST: "127.0.0.1",
+      PORT: String(port),
+      MCP_AUTH_MODE: authMode,
+      ...(authMode === "bearer" ? { MCP_API_KEY: apiKey } : {}),
+      ALLOWED_HOSTS: "127.0.0.1"
+    },
+    stdio: ["ignore", "pipe", "pipe"]
+  });
+
+  child.stdout.pipe(process.stdout);
+  child.stderr.pipe(process.stderr);
+}
+
+const client = new Client(
+  { name: "capital-gains-tax-http-smoke-client", version: "0.1.0" },
+  { capabilities: {} }
+);
+
+try {
+  if (child) {
+    await waitForHealth(healthUrl, child);
+  } else {
+    const health = await fetch(healthUrl);
+    if (!health.ok) {
+      throw new Error(`Remote health check failed with status ${health.status}.`);
+    }
+  }
+
+  const unauthorized = await fetch(mcpUrl, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: "{}"
+  });
+  if (authMode === "bearer" && unauthorized.status !== 401) {
+    throw new Error(`Expected unauthenticated status 401, got ${unauthorized.status}.`);
+  }
+  if (authMode === "none" && unauthorized.status === 401) {
+    throw new Error("No-auth server unexpectedly required authentication.");
+  }
+
+  const transport = new StreamableHTTPClientTransport(mcpUrl, {
+    ...(authMode === "bearer"
+      ? {
+          requestInit: {
+            headers: { Authorization: `Bearer ${apiKey}` }
+          }
+        }
+      : {})
+  });
+  await client.connect(transport);
+
+  const tools = await client.listTools();
+  const toolNames = tools.tools.map((tool) => tool.name);
+  console.log("HTTP_TOOLS", toolNames);
+  if (!toolNames.includes("calculate_capital_gains_tax")) {
+    throw new Error("Calculation tool was not exposed by the HTTP server.");
+  }
+  for (const tool of tools.tools) {
+    if (
+      !tool.description?.includes(
+        "Korean Capital Gains Tax Advisor(한국 양도소득세 도우미)"
+      )
+    ) {
+      throw new Error(`Tool ${tool.name} is missing the bilingual service name.`);
+    }
+    const annotations = tool.annotations;
+    if (
+      !annotations?.title ||
+      annotations.readOnlyHint !== true ||
+      annotations.destructiveHint !== false ||
+      annotations.openWorldHint !== false ||
+      annotations.idempotentHint !== true
+    ) {
+      throw new Error(`Tool ${tool.name} has incomplete PlayMCP annotations.`);
+    }
+  }
+
+  const supported = await client.callTool({
+    name: "list_supported_capital_gains_scenarios",
+    arguments: { detailLevel: "summary" }
+  });
+  console.log("HTTP_SUPPORTED", supported.structuredContent ?? supported.content);
+} finally {
+  await client.close().catch(() => undefined);
+  if (child) {
+    if (child.exitCode === null) child.kill("SIGTERM");
+    await new Promise((resolveExit) => {
+      if (child.exitCode !== null) {
+        resolveExit();
+        return;
+      }
+      child.once("exit", resolveExit);
+    });
+  }
+}

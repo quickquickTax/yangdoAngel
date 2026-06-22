@@ -1,0 +1,270 @@
+import { calculateFullHoldingYears, parseIsoDate, compareDates } from "./date.js";
+import type {
+  CapitalGainsCase,
+  ValidationIssue,
+  ValidationResult
+} from "./types.js";
+import {
+  getRules,
+  isRuleApplicableOn,
+  listSupportedRuleDates
+} from "../rules/rule-registry.js";
+
+function addIssue(
+  issues: ValidationIssue[],
+  severity: ValidationIssue["severity"],
+  code: string,
+  message: string,
+  field?: string
+): void {
+  issues.push(field ? { severity, code, message, field } : { severity, code, message });
+}
+
+export function validateCapitalGainsCase(
+  input: Partial<CapitalGainsCase>
+): ValidationResult {
+  const issues: ValidationIssue[] = [];
+  const questions: string[] = [];
+
+  if (!input.ruleDate) {
+    addIssue(issues, "error", "RULE_DATE_REQUIRED", "계산 규칙 기준일이 필요합니다.", "ruleDate");
+    questions.push("어느 기준일의 세법으로 계산할까요?");
+  } else if (!listSupportedRuleDates().includes(input.ruleDate)) {
+    addIssue(
+      issues,
+      "unsupported",
+      "RULE_DATE_UNSUPPORTED",
+      `지원하지 않는 기준일입니다. 지원 기준일: ${listSupportedRuleDates().join(", ")}`,
+      "ruleDate"
+    );
+  }
+
+  if (!input.transfer) {
+    addIssue(issues, "error", "TRANSFER_REQUIRED", "양도 정보가 필요합니다.", "transfer");
+  } else {
+    if (!Number.isSafeInteger(input.transfer.price) || input.transfer.price <= 0) {
+      addIssue(issues, "error", "TRANSFER_PRICE_INVALID", "양도가액은 0보다 큰 정수여야 합니다.", "transfer.price");
+    }
+    try {
+      parseIsoDate(input.transfer.date);
+    } catch (error) {
+      addIssue(issues, "error", "TRANSFER_DATE_INVALID", (error as Error).message, "transfer.date");
+    }
+  }
+
+  if (!input.acquisition) {
+    addIssue(issues, "error", "ACQUISITION_REQUIRED", "취득 정보가 필요합니다.", "acquisition");
+  } else {
+    if (!Number.isSafeInteger(input.acquisition.price) || input.acquisition.price <= 0) {
+      addIssue(issues, "error", "ACQUISITION_PRICE_INVALID", "취득가액은 0보다 큰 정수여야 합니다.", "acquisition.price");
+    }
+    try {
+      parseIsoDate(input.acquisition.date);
+    } catch (error) {
+      addIssue(issues, "error", "ACQUISITION_DATE_INVALID", (error as Error).message, "acquisition.date");
+    }
+    if (input.acquisition.method && input.acquisition.method !== "purchase") {
+      addIssue(
+        issues,
+        "unsupported",
+        "ACQUISITION_METHOD_UNSUPPORTED",
+        "상속·증여 등 매매 외 취득은 현재 버전에서 지원하지 않습니다.",
+        "acquisition.method"
+      );
+    }
+  }
+
+  if (input.transfer && input.acquisition) {
+    try {
+      const transfer = parseIsoDate(input.transfer.date);
+      const acquisition = parseIsoDate(input.acquisition.date);
+      if (compareDates(transfer, acquisition) <= 0) {
+        addIssue(
+          issues,
+          "error",
+          "DATE_ORDER_INVALID",
+          "양도일은 취득일 이후여야 합니다.",
+          "transfer.date"
+        );
+      }
+    } catch {
+      // 개별 날짜 오류가 이미 추가되어 있다.
+    }
+  }
+
+  if (
+    input.ruleDate &&
+    listSupportedRuleDates().includes(input.ruleDate) &&
+    input.transfer
+  ) {
+    try {
+      parseIsoDate(input.transfer.date);
+      const rules = getRules(input.ruleDate);
+      if (!isRuleApplicableOn(rules, input.transfer.date)) {
+        addIssue(
+          issues,
+          "error",
+          "RULE_NOT_EFFECTIVE_ON_TRANSFER_DATE",
+          `선택한 규칙은 양도일에 유효하지 않습니다. 적용기간: ${rules.effectiveFrom} ~ ${rules.effectiveTo ?? "현재"}`,
+          "ruleDate"
+        );
+      }
+    } catch {
+      // 날짜 형식 오류는 개별 날짜 검증에서 보고한다.
+    }
+  }
+
+  if (!input.asset) {
+    addIssue(issues, "error", "ASSET_REQUIRED", "자산 정보가 필요합니다.", "asset");
+  } else {
+    if (!input.asset.domestic) {
+      addIssue(issues, "unsupported", "FOREIGN_ASSET_UNSUPPORTED", "국외 자산은 현재 지원하지 않습니다.", "asset.domestic");
+    }
+  }
+
+  if (!input.ownership) {
+    addIssue(issues, "error", "OWNERSHIP_REQUIRED", "소유 형태가 필요합니다.", "ownership");
+  } else if (input.ownership.type !== "solo" && input.ownership.type !== "joint") {
+    addIssue(issues, "error", "OWNERSHIP_TYPE_INVALID", "소유 형태가 올바르지 않습니다.", "ownership.type");
+  } else if (input.ownership.type === "joint") {
+    const owners = (input.ownership as { owners?: Array<{ sharePercent?: unknown }> }).owners;
+    if (!Array.isArray(owners)) {
+      addIssue(issues, "error", "JOINT_OWNERS_REQUIRED", "공동명의 소유자 목록이 필요합니다.", "ownership.owners");
+    } else {
+      if (owners.length < 2) {
+        addIssue(issues, "error", "JOINT_OWNER_COUNT_INVALID", "공동명의는 소유자가 2명 이상이어야 합니다.", "ownership.owners");
+      }
+      const invalidShare = owners.some(
+        (owner) =>
+          !owner ||
+          typeof owner.sharePercent !== "number" ||
+          !Number.isFinite(owner.sharePercent) ||
+          owner.sharePercent <= 0
+      );
+      if (invalidShare) {
+        addIssue(issues, "error", "JOINT_SHARE_INVALID", "각 지분은 0%보다 큰 숫자여야 합니다.", "ownership.owners");
+      } else {
+        const totalShare = owners.reduce(
+          (sum, owner) => sum + (owner.sharePercent as number),
+          0
+        );
+        if (Math.abs(totalShare - 100) > 0.0001) {
+          addIssue(
+            issues,
+            "error",
+            "JOINT_SHARE_SUM_INVALID",
+            `공동명의 지분 합계는 100%여야 합니다. 현재 ${totalShare}%입니다.`,
+            "ownership.owners"
+          );
+        }
+      }
+    }
+  }
+
+  if (input.expenses !== undefined) {
+    if (!Array.isArray(input.expenses)) {
+      addIssue(issues, "error", "EXPENSES_INVALID", "필요경비는 배열이어야 합니다.", "expenses");
+    } else {
+      input.expenses.forEach((expense, index) => {
+        if (expense.type === "other") {
+          addIssue(
+            issues,
+            "unsupported",
+            "OTHER_EXPENSE_UNSUPPORTED",
+            "기타 필요경비는 적격성 확인 전에는 계산할 수 없습니다.",
+            `expenses.${index}.type`
+          );
+        }
+        if (expense.evidenceStatus !== "available") {
+          addIssue(
+            issues,
+            "unsupported",
+            "EXPENSE_EVIDENCE_REQUIRED",
+            "필요경비는 증빙 보유가 확인된 항목만 계산할 수 있습니다.",
+            `expenses.${index}.evidenceStatus`
+          );
+        }
+      });
+    }
+  }
+
+  if (!input.household) {
+    addIssue(issues, "error", "HOUSEHOLD_REQUIRED", "세대 및 주택 정보가 필요합니다.", "household");
+  } else {
+    if (input.household.oneHouseExemptionClaimed) {
+      const isHousing =
+        input.asset?.subType === "housing" || input.asset?.subType === "housing_1h1h";
+      if (!isHousing || input.household.houseCount !== 1) {
+        addIssue(
+          issues,
+          "error",
+          "ONE_HOUSE_EXEMPTION_INCONSISTENT",
+          "1세대 1주택 비과세는 주택 자산이며 세대 주택 수가 1채인 경우에만 요청할 수 있습니다.",
+          "household.oneHouseExemptionClaimed"
+        );
+      }
+      if (
+        input.household.exemptionVerificationStatus !==
+        "verified_by_tax_professional"
+      ) {
+        addIssue(
+          issues,
+          "error",
+          "ONE_HOUSE_EXEMPTION_NOT_VERIFIED",
+          "1세대 1주택 비과세 요건은 세무전문가 검증 후에만 계산할 수 있습니다.",
+          "household.exemptionVerificationStatus"
+        );
+      }
+    }
+
+    if (input.transfer && input.acquisition) {
+      try {
+        const holdingYears = calculateFullHoldingYears(
+          input.acquisition.date,
+          input.transfer.date
+        );
+        if (input.household.residenceYears > holdingYears) {
+          addIssue(
+            issues,
+            "error",
+            "RESIDENCE_EXCEEDS_HOLDING_PERIOD",
+            "거주기간은 보유기간을 초과할 수 없습니다.",
+            "household.residenceYears"
+          );
+        }
+      } catch {
+        // 날짜 오류는 개별 날짜 검증에서 보고한다.
+      }
+    }
+  }
+
+  if (!input.annualContext) {
+    addIssue(issues, "error", "ANNUAL_CONTEXT_REQUIRED", "동일 연도 다른 양도 여부를 확인해야 합니다.", "annualContext");
+    questions.push("같은 연도에 다른 자산을 양도했습니까?");
+  } else if (input.annualContext.otherTransfersExist) {
+    addIssue(
+      issues,
+      "unsupported",
+      "MULTIPLE_TRANSFERS_UNSUPPORTED",
+      "동일 과세기간 복수 양도는 합산·차손통산 검토가 필요하여 현재 지원하지 않습니다.",
+      "annualContext.otherTransfersExist"
+    );
+  }
+
+  const hasError = issues.some((issue) => issue.severity === "error");
+  const hasUnsupported = issues.some((issue) => issue.severity === "unsupported");
+  const hasWarning = issues.some((issue) => issue.severity === "warning");
+
+  return {
+    status: hasUnsupported
+      ? "unsupported"
+      : hasError
+        ? "invalid"
+        : hasWarning
+          ? "needs_review"
+          : "complete",
+    validForCalculation: !hasError && !hasUnsupported,
+    issues,
+    questions
+  };
+}
