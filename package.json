@@ -1,0 +1,39 @@
+{
+  "name": "capital-gains-tax-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "대한민국 부동산 양도소득세 계산 엔진과 MCP 서버의 초기 구현",
+  "type": "module",
+  "main": "dist/server.js",
+  "bin": {
+    "capital-gains-tax-mcp": "dist/server.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/server.ts",
+    "dev:http": "tsx src/http-server.ts",
+    "start": "node dist/server.js",
+    "start:http": "node dist/http-server.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run build && npm test",
+    "demo": "tsx src/demo.ts",
+    "smoke": "npm run build && node scripts/smoke-client.mjs",
+    "smoke:http": "npm run build && node scripts/smoke-http-client.mjs",
+    "smoke:http:kakao": "npm run build && node scripts/smoke-http-client.mjs --no-auth"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "24.3.0",
+    "tsx": "4.20.5",
+    "typescript": "5.9.3",
+    "vitest": "3.2.4"
+  }
+}
