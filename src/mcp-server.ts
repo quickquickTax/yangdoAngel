@@ -7,13 +7,14 @@ import {
 import { runValidation } from "./tools/validate-capital-gains-case.js";
 import { runCalculation } from "./tools/calculate-capital-gains-tax.js";
 import { getSupportedScenarios } from "./tools/list-supported-scenarios.js";
+import { sanitizePersonalInfo } from "./tools/sanitize-personal-info.js";
 
 export const SERVICE_DISPLAY_NAME = "바로바로 양도소득세";
 
 export const INITIAL_CONTRACT_REQUEST =
   "양도소득세 검토를 시작하려면 양도계약서와 취득계약서 사진을 올려달라고 안내하세요. " +
   "사진은 계약일, 거래금액, 부동산 종류를 확인할 수 있도록 선명해야 합니다. " +
-  "주민등록번호, 계좌번호, 서명과 도장은 반드시 가린 뒤 올리도록 안내하세요. " +
+  "사진을 올리면 시스템이 주민등록번호·이름·전화번호·계좌번호를 자동으로 마스킹합니다. " +
   "계약서가 없거나 사진을 올릴 수 없으면 필요한 정보를 질문으로 수집하세요.";
 
 function readOnlyAnnotations(title: string) {
@@ -34,7 +35,10 @@ export function createCapitalGainsMcpServer(): McpServer {
     },
     {
       instructions:
-        `${INITIAL_CONTRACT_REQUEST} Do not calculate until missing values and document evidence have been validated.`
+        `${INITIAL_CONTRACT_REQUEST} ` +
+        `계약서 사진에서 텍스트를 읽었으면 반드시 sanitize_contract_text 도구를 가장 먼저 호출하여 개인정보를 마스킹하세요. ` +
+        `마스킹된 결과만 이후 도구에 전달하고, 원본 개인정보(주민등록번호·이름 등)는 절대 출력하거나 도구 인자로 사용하지 마세요. ` +
+        `Do not calculate until missing values and document evidence have been validated.`
     }
   );
 
@@ -57,6 +61,31 @@ export function createCapitalGainsMcpServer(): McpServer {
         }
       ]
     })
+  );
+
+  server.registerTool(
+    "sanitize_contract_text",
+    {
+      title: "계약서 개인정보 마스킹",
+      description:
+        `계약서 사진에서 추출한 텍스트의 주민(외국인)등록번호, 이름, 전화번호, 계좌번호를 자동으로 마스킹합니다. ` +
+        `계약서 이미지를 분석할 때 반드시 다른 도구보다 먼저 호출하세요. ` +
+        `마스킹된 텍스트(sanitizedText)만 이후 검증·계산 도구에 사용하세요.`,
+      annotations: readOnlyAnnotations("Sanitize Personal Information from Contract Text"),
+      inputSchema: {
+        contractText: z
+          .string()
+          .min(1)
+          .describe("계약서 사진에서 OCR로 추출한 원문 텍스트")
+      }
+    },
+    async ({ contractText }) => {
+      const result = sanitizePersonalInfo(contractText);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        structuredContent: { result }
+      };
+    }
   );
 
   server.registerTool(
