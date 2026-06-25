@@ -68,7 +68,7 @@ export function createCapitalGainsMcpServer(): McpServer {
     {
       title: "계약서 개인정보 마스킹",
       description:
-        `계약서 사진에서 추출한 텍스트의 주민(외국인)등록번호, 이름, 전화번호, 계좌번호를 자동으로 마스킹합니다. ` +
+        `${SERVICE_DISPLAY_NAME}는 계약서 사진에서 추출한 텍스트의 주민(외국인)등록번호, 이름, 전화번호, 계좌번호를 자동으로 마스킹합니다. ` +
         `계약서 이미지를 분석할 때 반드시 다른 도구보다 먼저 호출하세요. ` +
         `마스킹된 텍스트(sanitizedText)만 이후 검증·계산 도구에 사용하세요.`,
       annotations: readOnlyAnnotations("Sanitize Personal Information from Contract Text"),
