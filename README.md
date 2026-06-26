@@ -182,7 +182,7 @@ src/
 ├─ mcp-server.ts           MCP 도구 등록과 annotations
 ├─ domain/                 계산·검증 도메인 로직
 ├─ rules/                  기준일별 세법 규칙 데이터
-└─ tools/                  MCP 입력 스키마와 도구 어댑텰
+└─ tools/                  MCP 입력 스키마와 도구 어댑터
 
 tests/
 ├─ unit/                   날짜·세율·검증·공동명의 테스트

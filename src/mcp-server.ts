@@ -172,7 +172,7 @@ export function createCapitalGainsMcpServer(): McpServer {
     {
       title: "양도소득세 예상 계산",
       description:
-        `${SERVICE_DISPLAY_NAME}는 검증이 완료된 부동산 양도 사건을 바탕으로 양도소득세와 개인지방소득세 예상액을 계산합니다. 같은 해 복수 양도나 상속·증여 취득 등 현재 지원하지 않는 사건은 계산하지 않습니다. 결과는 검토용 예상屡이며 확정 신고세액이 아닙니다.`,
+        `${SERVICE_DISPLAY_NAME}는 검증이 완료된 부동산 양도 사건을 바탕으로 양도소득세와 개인지방소득세 예상액을 계산합니다. 같은 해 복수 양도나 상속·증여 취득 등 현재 지원하지 않는 사건은 계산하지 않습니다. 결과는 검토용 예상액이며 확정 신고세액이 아닙니다.`,
       annotations: readOnlyAnnotations(
         "Calculate Estimated Korean Capital Gains Tax"
       ),
