@@ -11,10 +11,11 @@
 이 MCP는 다음 순서로 동작합니다.
 
 1. 양도·취득계약서 사진을 요청하고 민감정보 마스킹을 안내합니다.
-2. 입력 사건이 계산 가능한지 검증합니다.
-3. 누락값, 모순된 조건, 미지원 사건을 구분합니다.
-4. 검증을 통과한 사건만 결정론적으로 계산합니다.
-5. 세액, 계산 단계, 적용 규칙 버전과 주의사항을 반환합니다.
+2. 마스킹된 계약서 OCR 텍스트에서 계산 후보값을 추출합니다.
+3. 계산 전 체크리스트로 누락값, 모순된 조건, 미지원 사건을 구분합니다.
+4. 입력 사건이 계산 가능한지 검증합니다.
+5. 검증을 통과한 사건만 결정론적으로 계산합니다.
+6. 세액, 계산 단계, 적용 규칙 버전과 주의사항을 반환합니다.
 
 ## 주요 기능
 
@@ -24,12 +25,46 @@
 - 양도소득세와 개인지방소득세 계산
 - 단독명의·공동명의 지분별 계산
 - 공동명의와 단독명의 가정 결과 비교
+- 계약서 OCR 텍스트 기반 양도일·취득일·거래금액 후보 추출
+- 계산 전 누락값 질문과 위험 체크리스트 생성
 - 1세대 1주택 비과세 요청의 일관성 검증
 - 규칙 적용기간과 양도일 불일치 차단
 - 상속·증여 취득과 동일 연도 복수 양도 등 미지원 사건 차단
 - 증빙이 확인되지 않은 필요경비 차단
 
 ## MCP 도구
+
+### `sanitize_contract_text`
+
+계약서 OCR 텍스트의 주민등록번호, 이름, 전화번호, 계좌번호를 마스킹합니다.
+
+계약서 이미지를 분석할 때는 이 도구를 가장 먼저 호출하고, 이후 도구에는 마스킹된 텍스트만 전달합니다.
+
+### `extract_contract_case_fields`
+
+마스킹된 계약서 OCR 텍스트에서 계산 후보값을 추출합니다.
+
+주요 결과:
+
+- `partialCaseData`: `validate_capital_gains_case`의 `caseData`와 호환되는 부분 입력값
+- `extractedFields`: 추출 필드, 값, 근거 텍스트, 신뢰도
+- `unresolvedFields`: 추가 확인이 필요한 필드
+- `questions`: 사용자에게 물어볼 누락값 질문
+- `warnings`: 문서 유형 불명확, OCR 품질 등 주의사항
+
+### `prepare_capital_gains_case_checklist`
+
+계약서 추출값과 사용자 답변을 누적한 `caseData`를 기준으로 계산 전 체크리스트를 생성합니다.
+
+확인 항목:
+
+- 계약서 핵심값: 양도일, 취득일, 양도가액, 취득가액
+- 자산 종류와 토지 사업용 여부
+- 단독명의·공동명의와 지분율
+- 주택 수, 거주기간, 조정대상지역 여부
+- 1세대 1주택 비과세 요청과 전문가 검증 여부
+- 상속·증여 취득, 동일 연도 복수 양도 등 미지원 위험
+- 필요경비와 증빙 보유 여부
 
 ### `validate_capital_gains_case`
 
@@ -72,14 +107,14 @@ AI: 계산에 필요한 주택 수, 거주기간, 조정대상지역 여부,
     비과세 적용 요청과 증빙 상태를 추가로 확인합니다.
 ```
 
-AI는 먼저 `validate_capital_gains_case`를 호출하고, 검증을 통과한 경우에만 `calculate_capital_gains_tax`를 호출해야 합니다.
+AI는 계약서 사진에서 텍스트를 읽은 경우 `sanitize_contract_text`, `extract_contract_case_fields`, `prepare_capital_gains_case_checklist`, `validate_capital_gains_case` 순서로 호출하고, 검증을 통과한 경우에만 `calculate_capital_gains_tax`를 호출해야 합니다.
 
 ## PlayMCP 호환성
 
 - MCP 프로토콜: `2025-03-26` ~ `2025-11-25`
 - 전송 방식: Streamable HTTP
 - 서버 방식: Stateless
-- 도구 개수: 3개
+- 도구 개수: 6개
 - 도구 이름: PlayMCP 문자 규칙 준수
 - 도구 설명: 영문 중심, 영문·국문 서비스명 병기
 - 필수 annotations 제공
@@ -126,7 +161,7 @@ npm run smoke:http:kakao
 검증 항목:
 
 - TypeScript 빌드
-- 단위·회귀 테스트 33개
+- 단위·회귀 테스트 57개
 - Streamable HTTP 초기화
 - 도구 목록과 PlayMCP annotations
 - 무인증 Endpoint 호출
@@ -147,7 +182,7 @@ src/
 ├─ mcp-server.ts           MCP 도구 등록과 annotations
 ├─ domain/                 계산·검증 도메인 로직
 ├─ rules/                  기준일별 세법 규칙 데이터
-└─ tools/                  MCP 입력 스키마와 도구 어댑터
+└─ tools/                  MCP 입력 스키마와 도구 어댑텰
 
 tests/
 ├─ unit/                   날짜·세율·검증·공동명의 테스트

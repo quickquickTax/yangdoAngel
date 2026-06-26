@@ -41,27 +41,33 @@ export function validateCapitalGainsCase(
 
   if (!input.transfer) {
     addIssue(issues, "error", "TRANSFER_REQUIRED", "양도 정보가 필요합니다.", "transfer");
+    questions.push("양도일과 양도가액은 각각 얼마입니까?");
   } else {
     if (!Number.isSafeInteger(input.transfer.price) || input.transfer.price <= 0) {
       addIssue(issues, "error", "TRANSFER_PRICE_INVALID", "양도가액은 0보다 큰 정수여야 합니다.", "transfer.price");
+      questions.push("양도가액은 원 단위의 0보다 큰 정수로 얼마입니까?");
     }
     try {
       parseIsoDate(input.transfer.date);
     } catch (error) {
       addIssue(issues, "error", "TRANSFER_DATE_INVALID", (error as Error).message, "transfer.date");
+      questions.push("양도일은 YYYY-MM-DD 형식으로 언제입니까?");
     }
   }
 
   if (!input.acquisition) {
     addIssue(issues, "error", "ACQUISITION_REQUIRED", "취득 정보가 필요합니다.", "acquisition");
+    questions.push("취득일, 취득가액, 취득 방법은 각각 무엇입니까?");
   } else {
     if (!Number.isSafeInteger(input.acquisition.price) || input.acquisition.price <= 0) {
       addIssue(issues, "error", "ACQUISITION_PRICE_INVALID", "취득가액은 0보다 큰 정수여야 합니다.", "acquisition.price");
+      questions.push("취득가액은 원 단위의 0보다 큰 정수로 얼마입니까?");
     }
     try {
       parseIsoDate(input.acquisition.date);
     } catch (error) {
       addIssue(issues, "error", "ACQUISITION_DATE_INVALID", (error as Error).message, "acquisition.date");
+      questions.push("취득일은 YYYY-MM-DD 형식으로 언제입니까?");
     }
     if (input.acquisition.method && input.acquisition.method !== "purchase") {
       addIssue(
@@ -116,6 +122,7 @@ export function validateCapitalGainsCase(
 
   if (!input.asset) {
     addIssue(issues, "error", "ASSET_REQUIRED", "자산 정보가 필요합니다.", "asset");
+    questions.push("자산 종류는 주택, 건물, 토지 중 무엇입니까?");
   } else {
     if (!input.asset.domestic) {
       addIssue(issues, "unsupported", "FOREIGN_ASSET_UNSUPPORTED", "국외 자산은 현재 지원하지 않습니다.", "asset.domestic");
@@ -124,6 +131,7 @@ export function validateCapitalGainsCase(
 
   if (!input.ownership) {
     addIssue(issues, "error", "OWNERSHIP_REQUIRED", "소유 형태가 필요합니다.", "ownership");
+    questions.push("단독명의입니까, 공동명의입니까? 공동명의라면 각 지분율은 얼마입니까?");
   } else if (input.ownership.type !== "solo" && input.ownership.type !== "joint") {
     addIssue(issues, "error", "OWNERSHIP_TYPE_INVALID", "소유 형태가 올바르지 않습니다.", "ownership.type");
   } else if (input.ownership.type === "joint") {
@@ -190,6 +198,7 @@ export function validateCapitalGainsCase(
 
   if (!input.household) {
     addIssue(issues, "error", "HOUSEHOLD_REQUIRED", "세대 및 주택 정보가 필요합니다.", "household");
+    questions.push("세대 주택 수, 거주기간, 조정대상지역 여부, 1세대 1주택 비과세 요청 여부를 확인해 주세요.");
   } else {
     if (input.household.oneHouseExemptionClaimed) {
       const isHousing =
@@ -265,6 +274,6 @@ export function validateCapitalGainsCase(
           : "complete",
     validForCalculation: !hasError && !hasUnsupported,
     issues,
-    questions
+    questions: [...new Set(questions)]
   };
 }
