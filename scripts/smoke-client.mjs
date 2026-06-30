@@ -102,10 +102,11 @@ try {
     .join("\n");
   if (
     !promptText.includes("양도가액") ||
-    !promptText.includes("normalize_date_input") ||
-    !promptText.includes("normalize_amount_input") ||
-    !promptText.includes("정규화 도구") ||
-    !promptText.includes("개인정보")
+    !promptText.includes("편한 형식") ||
+    !promptText.includes("자연어") ||
+    !promptText.includes("개인정보") ||
+    promptText.includes("normalize_") ||
+    promptText.includes("정규화 도구")
   ) {
     throw new Error("The start prompt does not match the manual-input flow.");
   }
