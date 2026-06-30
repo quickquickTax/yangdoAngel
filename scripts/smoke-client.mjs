@@ -26,6 +26,7 @@ try {
   const toolNames = tools.tools.map((tool) => tool.name);
   console.log("TOOLS", toolNames);
   const expectedTools = [
+    "normalize_date_input",
     "normalize_amount_input",
     "prepare_capital_gains_case_checklist",
     "validate_capital_gains_case",
@@ -41,6 +42,7 @@ try {
     }
   }
   const requiredDescriptionText = {
+    normalize_date_input: "날짜 표현",
     normalize_amount_input: "금액 표현",
     prepare_capital_gains_case_checklist: "누락값",
     validate_capital_gains_case: "필수 입력값",
@@ -84,10 +86,23 @@ try {
     .join("\n");
   if (
     !promptText.includes("양도가액") ||
+    !promptText.includes("normalize_date_input") ||
     !promptText.includes("normalize_amount_input") ||
     !promptText.includes("개인정보")
   ) {
     throw new Error("The start prompt does not match the manual-input flow.");
+  }
+
+  const date = await client.callTool({
+    name: "normalize_date_input",
+    arguments: { rawDate: "250101-260101" }
+  });
+  const normalizedStartDate = date.structuredContent?.result?.startDate;
+  const normalizedEndDate = date.structuredContent?.result?.endDate;
+  if (normalizedStartDate !== "2025-01-01" || normalizedEndDate !== "2026-01-01") {
+    throw new Error(
+      `Expected normalized date range 2025-01-01~2026-01-01, got ${normalizedStartDate}~${normalizedEndDate}.`
+    );
   }
 
   const amount = await client.callTool({
