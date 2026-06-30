@@ -20,12 +20,26 @@ function formatWon(amount: number): string {
 }
 
 function normalizeText(rawAmount: string): string {
-  return rawAmount
+  const compacted = rawAmount
     .trim()
     .replace(/[,\s]/g, "")
     .replace(/[₩원]/g, "")
     .replace(/^(약|대략| approximately)/i, "")
     .replace(/(정도|가량|예상)$/g, "");
+
+  if (/^\d+(?:\.\d+)?(?:억|만|천|백|십)?\d*(?:\.\d+)?(?:억|만|천|백|십)?$/.test(compacted)) {
+    return compacted;
+  }
+
+  const unitMatch = compacted.match(
+    /\d+(?:\.\d+)?억(?:\d+(?:\.\d+)?(?:천|백|십)?만?)?(?:\d+(?:\.\d+)?만)?|\d+(?:\.\d+)?(?:천|백|십)?만/
+  );
+  if (unitMatch) {
+    return unitMatch[0];
+  }
+
+  const plainNumberMatch = compacted.match(/\d{4,}/);
+  return plainNumberMatch ? plainNumberMatch[0] : compacted;
 }
 
 function parseSmallKoreanNumber(value: string): number | null {
