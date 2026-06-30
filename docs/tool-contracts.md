@@ -1,6 +1,32 @@
 # MCP 도구 계약
 
-## 1. `prepare_capital_gains_case_checklist`
+## 1. `normalize_amount_input`
+
+사용자가 입력한 금액 표현을 원 단위 정수로 변환합니다.
+
+- 양도가액, 취득가액, 필요경비를 `caseData`에 넣기 전에 사용합니다.
+- 숫자 쉼표와 `원` 표기를 허용합니다.
+- `억`, `만`, `천만` 단위 표현을 허용합니다.
+- 해석할 수 없는 입력은 `amount=null`과 경고를 반환합니다.
+
+지원 예시:
+
+- `750,000,000` → `750000000`
+- `750,000,000원` → `750000000`
+- `7.5억` → `750000000`
+- `7억` → `700000000`
+- `7억5000만` → `750000000`
+- `7억 5천만` → `750000000`
+- `8500만원` → `85000000`
+
+주요 반환 내용:
+
+- `amount`: 원 단위 정수 또는 `null`
+- `displayAmount`: 쉼표가 포함된 원화 표시값
+- `confidence`: `high`, `low`
+- `warnings`: 확인 또는 재입력이 필요한 사유
+
+## 2. `prepare_capital_gains_case_checklist`
 
 사용자가 직접 입력한 양도소득세 사건 데이터를 기준으로 계산 전 누락값과 위험 항목을 확인합니다.
 
@@ -28,7 +54,7 @@
 - `validationPreview`: 현재 입력의 검증 미리보기
 - `nextTool`: 다음에 호출할 권장 도구
 
-## 2. `validate_capital_gains_case`
+## 3. `validate_capital_gains_case`
 
 계산 전에 입력값과 지원 범위를 확인합니다.
 
@@ -48,7 +74,7 @@
 - `invalid`: 필수값 또는 형식 오류
 - `unsupported`: 현재 버전 미지원
 
-## 3. `calculate_capital_gains_tax`
+## 4. `calculate_capital_gains_tax`
 
 완전한 사건 데이터를 받아 결정론적으로 계산합니다.
 
@@ -62,6 +88,6 @@
 
 이 도구는 누락값을 채우거나 미지원 사건을 억지로 계산하지 않습니다.
 
-## 4. `list_supported_capital_gains_scenarios`
+## 5. `list_supported_capital_gains_scenarios`
 
 지원 규칙 기준일, 지원 사건, 미지원 사건을 반환합니다.

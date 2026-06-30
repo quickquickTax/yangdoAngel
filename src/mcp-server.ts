@@ -7,6 +7,7 @@ import {
 import { runValidation } from "./tools/validate-capital-gains-case.js";
 import { runCalculation } from "./tools/calculate-capital-gains-tax.js";
 import { getSupportedScenarios } from "./tools/list-supported-scenarios.js";
+import { normalizeAmountInput } from "./tools/normalize-amount-input.js";
 import { prepareCapitalGainsCaseChecklist } from "./tools/prepare-capital-gains-case-checklist.js";
 
 export const SERVICE_DISPLAY_NAME = "바로바로 양도소득세";
@@ -14,6 +15,7 @@ export const SERVICE_DISPLAY_NAME = "바로바로 양도소득세";
 export const INITIAL_REVIEW_REQUEST =
   "양도소득세 검토를 시작하려면 개인정보 없이 계산에 필요한 정보를 질문으로 수집하세요. " +
   "필수 항목은 양도일, 양도가액, 취득일, 취득가액, 취득 방법, 자산 종류, 소유 형태, 세대 주택 수, 거주기간, 조정대상지역 여부, 1세대 1주택 비과세 요청 여부, 같은 과세연도 다른 양도 여부입니다. " +
+  "금액을 7.5억, 7억5000만, 750,000,000처럼 답하면 normalize_amount_input으로 원 단위 숫자로 바꾸세요. " +
   "주민등록번호, 계좌번호, 이름, 전화번호 같은 민감정보는 입력하지 말라고 안내하세요.";
 
 function readOnlyAnnotations(title: string) {
@@ -35,6 +37,7 @@ export function createCapitalGainsMcpServer(): McpServer {
     {
       instructions:
         `${INITIAL_REVIEW_REQUEST} ` +
+        `양도가액, 취득가액, 필요경비처럼 금액이 자연어 또는 쉼표 포함 숫자로 입력되면 normalize_amount_input을 먼저 호출해 원 단위 정수로 변환하세요. ` +
         `사용자 답변을 caseData에 누적한 뒤 prepare_capital_gains_case_checklist와 validate_capital_gains_case를 사용해 누락값과 지원 범위를 확인하세요. ` +
         `Do not calculate until missing values and supported scenario checks have been validated.`
     }
@@ -59,6 +62,30 @@ export function createCapitalGainsMcpServer(): McpServer {
         }
       ]
     })
+  );
+
+  server.registerTool(
+    "normalize_amount_input",
+    {
+      title: "금액 입력 정규화",
+      description:
+        `${SERVICE_DISPLAY_NAME}는 사용자가 입력한 750,000,000, 7.5억, 7억5000만, 7억 5천만 같은 금액 표현을 계산 도구가 사용하는 원 단위 정수로 변환합니다. ` +
+        `양도가액, 취득가액, 필요경비를 caseData에 넣기 전에 이 도구로 정규화하세요.`,
+      annotations: readOnlyAnnotations("Normalize Korean Amount Input"),
+      inputSchema: {
+        rawAmount: z
+          .string()
+          .min(1)
+          .describe("사용자가 입력한 금액 표현. 예: 750,000,000, 7.5억, 7억5000만, 7억 5천만")
+      }
+    },
+    async ({ rawAmount }) => {
+      const result = normalizeAmountInput(rawAmount);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        structuredContent: { result }
+      };
+    }
   );
 
   server.registerTool(

@@ -115,6 +115,7 @@ try {
   const toolNames = tools.tools.map((tool) => tool.name);
   console.log("HTTP_TOOLS", toolNames);
   const expectedTools = [
+    "normalize_amount_input",
     "prepare_capital_gains_case_checklist",
     "validate_capital_gains_case",
     "calculate_capital_gains_tax",
@@ -144,6 +145,15 @@ try {
     ) {
       throw new Error(`Tool ${tool.name} has incomplete PlayMCP annotations.`);
     }
+  }
+
+  const amount = await client.callTool({
+    name: "normalize_amount_input",
+    arguments: { rawAmount: "7.5억" }
+  });
+  const normalizedAmount = amount.structuredContent?.result?.amount;
+  if (normalizedAmount !== 750000000) {
+    throw new Error(`Expected HTTP normalized amount 750000000, got ${normalizedAmount}.`);
   }
 
   const supported = await client.callTool({

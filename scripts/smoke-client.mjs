@@ -26,6 +26,7 @@ try {
   const toolNames = tools.tools.map((tool) => tool.name);
   console.log("TOOLS", toolNames);
   const expectedTools = [
+    "normalize_amount_input",
     "prepare_capital_gains_case_checklist",
     "validate_capital_gains_case",
     "calculate_capital_gains_tax",
@@ -40,6 +41,7 @@ try {
     }
   }
   const requiredDescriptionText = {
+    normalize_amount_input: "금액 표현",
     prepare_capital_gains_case_checklist: "누락값",
     validate_capital_gains_case: "필수 입력값",
     calculate_capital_gains_tax: "예상액",
@@ -82,9 +84,19 @@ try {
     .join("\n");
   if (
     !promptText.includes("양도가액") ||
+    !promptText.includes("normalize_amount_input") ||
     !promptText.includes("개인정보")
   ) {
     throw new Error("The start prompt does not match the manual-input flow.");
+  }
+
+  const amount = await client.callTool({
+    name: "normalize_amount_input",
+    arguments: { rawAmount: "7억 5천만" }
+  });
+  const normalizedAmount = amount.structuredContent?.result?.amount;
+  if (normalizedAmount !== 750000000) {
+    throw new Error(`Expected normalized amount 750000000, got ${normalizedAmount}.`);
   }
 
   const validation = await client.callTool({
