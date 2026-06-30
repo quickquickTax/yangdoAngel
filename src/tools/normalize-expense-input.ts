@@ -1,5 +1,7 @@
 import type { ExpenseInput } from "../domain/types.js";
 import { normalizeAmountInput } from "./normalize-amount-input.js";
+import type { StandardNormalizationFields } from "./normalization-result.js";
+import { standardFields } from "./normalization-result.js";
 
 export interface ExpenseNormalizationResult {
   rawExpense: string;
@@ -7,6 +9,9 @@ export interface ExpenseNormalizationResult {
   confidence: "high" | "low";
   warnings: string[];
 }
+
+type ExpenseNormalizationOutput = ExpenseNormalizationResult &
+  StandardNormalizationFields<ExpenseInput>;
 
 function compact(value: string): string {
   return value.trim().replace(/\s+/g, "");
@@ -46,12 +51,13 @@ function extractAmountToken(rawExpense: string): string | null {
 
 export function normalizeExpenseInput(
   rawExpense: string
-): ExpenseNormalizationResult {
+): ExpenseNormalizationOutput {
   const value = compact(rawExpense);
   const warnings: string[] = [];
 
   if (!value) {
     return {
+      ...standardFields("expenses[]", null, false),
       rawExpense,
       expense: null,
       confidence: "low",
@@ -82,6 +88,7 @@ export function normalizeExpenseInput(
   };
 
   return {
+    ...standardFields("expenses[]", expense, warnings.length === 0),
     rawExpense,
     expense,
     confidence: warnings.length > 0 ? "low" : "high",

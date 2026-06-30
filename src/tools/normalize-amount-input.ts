@@ -1,3 +1,6 @@
+import type { StandardNormalizationFields } from "./normalization-result.js";
+import { standardFields } from "./normalization-result.js";
+
 export interface AmountNormalizationResult {
   rawAmount: string;
   amount: number | null;
@@ -5,6 +8,9 @@ export interface AmountNormalizationResult {
   confidence: "high" | "low";
   warnings: string[];
 }
+
+type AmountNormalizationOutput = AmountNormalizationResult &
+  StandardNormalizationFields<number>;
 
 const EOK = 100_000_000;
 const MAN = 10_000;
@@ -84,12 +90,13 @@ function parseUnitAmount(value: string): number | null {
 
 export function normalizeAmountInput(
   rawAmount: string
-): AmountNormalizationResult {
+): AmountNormalizationOutput {
   const warnings: string[] = [];
   const normalized = normalizeText(rawAmount);
 
   if (!normalized) {
     return {
+      ...standardFields("amount", null, false),
       rawAmount,
       amount: null,
       displayAmount: null,
@@ -110,6 +117,7 @@ export function normalizeAmountInput(
 
   if (parsed === null || !Number.isFinite(parsed) || parsed <= 0) {
     return {
+      ...standardFields("amount", null, false),
       rawAmount,
       amount: null,
       displayAmount: null,
@@ -121,6 +129,7 @@ export function normalizeAmountInput(
   const amount = Math.round(parsed);
   if (!Number.isSafeInteger(amount)) {
     return {
+      ...standardFields("amount", null, false),
       rawAmount,
       amount: null,
       displayAmount: null,
@@ -130,6 +139,7 @@ export function normalizeAmountInput(
   }
 
   return {
+    ...standardFields("amount", amount, true),
     rawAmount,
     amount,
     displayAmount: formatWon(amount),

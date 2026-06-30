@@ -20,6 +20,9 @@ describe("case input normalizers", () => {
     const result = normalizeAssetInput(rawAsset);
 
     expect(result.assetSubType).toBe(expected);
+    expect(result.targetField).toBe("asset.subType");
+    expect(result.normalizedValue).toBe(expected);
+    expect(result.readyForCaseData).toBe(true);
   });
 
   it("returns land candidates when land business status is unknown", () => {
@@ -32,6 +35,7 @@ describe("case input normalizers", () => {
       "land_nonbusiness_adj"
     ]);
     expect(result.confidence).toBe("low");
+    expect(result.readyForCaseData).toBe(false);
   });
 
   it.each([
@@ -43,6 +47,8 @@ describe("case input normalizers", () => {
     const result = normalizeAcquisitionMethodInput(rawMethod);
 
     expect(result.method).toBe(expected);
+    expect(result.targetField).toBe("acquisition.method");
+    expect(result.normalizedValue).toBe(expected);
   });
 
   it.each([
@@ -55,6 +61,9 @@ describe("case input normalizers", () => {
 
     expect(result.value).toBe(value);
     expect(result.normalized).toBe(normalized);
+    expect(result.targetField).toBe("boolean");
+    expect(result.normalizedValue).toBe(value);
+    expect(result.readyForCaseData).toBe(value !== null);
   });
 
   it.each([
@@ -67,6 +76,8 @@ describe("case input normalizers", () => {
 
     expect(result.residenceYears).toBe(residenceYears);
     expect(result.totalMonths).toBe(totalMonths);
+    expect(result.targetField).toBe("household.residenceYears");
+    expect(result.normalizedValue).toBe(residenceYears);
   });
 
   it.each([
@@ -78,6 +89,8 @@ describe("case input normalizers", () => {
     const result = normalizeCountInput(rawCount);
 
     expect(result.count).toBe(count);
+    expect(result.targetField).toBe("household.houseCount");
+    expect(result.normalizedValue).toBe(count);
   });
 
   it.each([
@@ -90,6 +103,8 @@ describe("case input normalizers", () => {
     const result = normalizeExemptionVerificationInput(rawStatus);
 
     expect(result.status).toBe(status);
+    expect(result.targetField).toBe("household.exemptionVerificationStatus");
+    expect(result.normalizedValue).toBe(status);
   });
 
   it.each([
@@ -118,6 +133,8 @@ describe("case input normalizers", () => {
     const result = normalizeOwnershipInput(rawOwnership);
 
     expect(result.ownership).toEqual(expected);
+    expect(result.targetField).toBe("ownership");
+    expect(result.normalizedValue).toEqual(expected);
   });
 
   it.each([
@@ -129,5 +146,7 @@ describe("case input normalizers", () => {
     const result = normalizeExpenseInput(rawExpense);
 
     expect(result.expense).toMatchObject({ type, amount, evidenceStatus });
+    expect(result.targetField).toBe("expenses[]");
+    expect(result.normalizedValue).toMatchObject({ type, amount, evidenceStatus });
   });
 });

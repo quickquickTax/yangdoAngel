@@ -1,4 +1,6 @@
 import type { OwnerInput } from "../domain/types.js";
+import type { StandardNormalizationFields } from "./normalization-result.js";
+import { standardFields } from "./normalization-result.js";
 
 export type NormalizedOwnership =
   | { type: "solo"; basicDeductionAlreadyUsed?: number }
@@ -10,6 +12,9 @@ export interface OwnershipNormalizationResult {
   confidence: "high" | "low";
   warnings: string[];
 }
+
+type OwnershipNormalizationOutput = OwnershipNormalizationResult &
+  StandardNormalizationFields<NormalizedOwnership>;
 
 function compact(value: string): string {
   return value.trim().replace(/\s+/g, "");
@@ -46,12 +51,13 @@ function extractShares(value: string): number[] {
 
 export function normalizeOwnershipInput(
   rawOwnership: string
-): OwnershipNormalizationResult {
+): OwnershipNormalizationOutput {
   const value = compact(rawOwnership);
   const warnings: string[] = [];
 
   if (!value) {
     return {
+      ...standardFields("ownership", null, false),
       rawOwnership,
       ownership: null,
       confidence: "low",
@@ -60,13 +66,22 @@ export function normalizeOwnershipInput(
   }
 
   if (/단독|혼자|본인100|1인|개인명의/.test(value)) {
-    return { rawOwnership, ownership: { type: "solo" }, confidence: "high", warnings };
+    const ownership: NormalizedOwnership = { type: "solo" };
+    return {
+      ...standardFields("ownership", ownership, true),
+      rawOwnership,
+      ownership,
+      confidence: "high",
+      warnings
+    };
   }
 
   if (/반반|절반|50대50|50:50/.test(value)) {
+    const ownership = makeJointOwnership([50, 50]);
     return {
+      ...standardFields("ownership", ownership, true),
       rawOwnership,
-      ownership: makeJointOwnership([50, 50]),
+      ownership,
       confidence: "high",
       warnings
     };
@@ -79,24 +94,29 @@ export function normalizeOwnershipInput(
       if (Math.abs(totalShare - 100) > 0.0001) {
         warnings.push(`공동명의 지분 합계가 100%가 아닙니다. 현재 ${totalShare}%입니다.`);
       }
+      const ownership = makeJointOwnership(shares);
       return {
+        ...standardFields("ownership", ownership, warnings.length === 0),
         rawOwnership,
-        ownership: makeJointOwnership(shares),
+        ownership,
         confidence: warnings.length > 0 ? "low" : "high",
         warnings
       };
     }
 
     warnings.push("공동명의로 해석했지만 지분율은 명확하지 않아 50:50으로 임시 정규화했습니다.");
+    const ownership = makeJointOwnership([50, 50]);
     return {
+      ...standardFields("ownership", ownership, false),
       rawOwnership,
-      ownership: makeJointOwnership([50, 50]),
+      ownership,
       confidence: "low",
       warnings
     };
   }
 
   return {
+    ...standardFields("ownership", null, false),
     rawOwnership,
     ownership: null,
     confidence: "low",

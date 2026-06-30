@@ -1,3 +1,6 @@
+import type { StandardNormalizationFields } from "./normalization-result.js";
+import { standardFields } from "./normalization-result.js";
+
 export interface DurationNormalizationResult {
   rawDuration: string;
   residenceYears: number | null;
@@ -6,18 +9,22 @@ export interface DurationNormalizationResult {
   warnings: string[];
 }
 
+type DurationNormalizationOutput = DurationNormalizationResult &
+  StandardNormalizationFields<number>;
+
 function compact(value: string): string {
   return value.trim().replace(/\s+/g, "");
 }
 
 export function normalizeDurationInput(
   rawDuration: string
-): DurationNormalizationResult {
+): DurationNormalizationOutput {
   const value = compact(rawDuration);
   const warnings: string[] = [];
 
   if (!value) {
     return {
+      ...standardFields("household.residenceYears", null, false),
       rawDuration,
       residenceYears: null,
       totalMonths: null,
@@ -27,7 +34,14 @@ export function normalizeDurationInput(
   }
 
   if (/거주안함|실거주없|안살|없음/.test(value) || /^(0년|0개월|0)$/.test(value)) {
-    return { rawDuration, residenceYears: 0, totalMonths: 0, confidence: "high", warnings };
+    return {
+      ...standardFields("household.residenceYears", 0, true),
+      rawDuration,
+      residenceYears: 0,
+      totalMonths: 0,
+      confidence: "high",
+      warnings
+    };
   }
 
   const yearMatch = value.match(/(\d+)\s*년/);
@@ -39,6 +53,7 @@ export function normalizeDurationInput(
 
   if (!yearMatch && !monthMatch && !plainYearMatch) {
     return {
+      ...standardFields("household.residenceYears", null, false),
       rawDuration,
       residenceYears: null,
       totalMonths: null,
@@ -54,6 +69,7 @@ export function normalizeDurationInput(
   }
 
   return {
+    ...standardFields("household.residenceYears", residenceYears, warnings.length === 0),
     rawDuration,
     residenceYears,
     totalMonths,

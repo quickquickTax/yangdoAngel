@@ -13,6 +13,9 @@ describe("normalizeDateInput", () => {
 
     expect(result.kind).toBe("single");
     expect(result.date).toBe(expected);
+    expect(result.targetField).toBe("date");
+    expect(result.normalizedValue).toBe(expected);
+    expect(result.readyForCaseData).toBe(true);
     expect(result.startDate).toBe(expected);
     expect(result.endDate).toBeNull();
     expect(result.confidence).toBe("high");
@@ -29,6 +32,9 @@ describe("normalizeDateInput", () => {
     expect(result.kind).toBe("range");
     expect(result.startDate).toBe(startDate);
     expect(result.endDate).toBe(endDate);
+    expect(result.targetField).toBe("dateRange");
+    expect(result.normalizedValue).toEqual({ startDate, endDate });
+    expect(result.readyForCaseData).toBe(true);
     expect(result.dates).toEqual([startDate, endDate]);
     expect(result.confidence).toBe("high");
   });
@@ -54,6 +60,8 @@ describe("normalizeDateInput", () => {
 
     expect(result.kind).toBe("invalid");
     expect(result.date).toBeNull();
+    expect(result.normalizedValue).toBeNull();
+    expect(result.readyForCaseData).toBe(false);
     expect(result.confidence).toBe("low");
   });
 });

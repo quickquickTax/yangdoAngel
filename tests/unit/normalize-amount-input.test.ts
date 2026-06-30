@@ -15,6 +15,9 @@ describe("normalizeAmountInput", () => {
     const result = normalizeAmountInput(rawAmount);
 
     expect(result.amount).toBe(expected);
+    expect(result.targetField).toBe("amount");
+    expect(result.normalizedValue).toBe(expected);
+    expect(result.readyForCaseData).toBe(true);
     expect(result.confidence).toBe("high");
     expect(result.warnings).toEqual([]);
   });
@@ -30,6 +33,8 @@ describe("normalizeAmountInput", () => {
     const result = normalizeAmountInput("많이");
 
     expect(result.amount).toBeNull();
+    expect(result.normalizedValue).toBeNull();
+    expect(result.readyForCaseData).toBe(false);
     expect(result.confidence).toBe("low");
     expect(result.warnings.length).toBeGreaterThan(0);
   });

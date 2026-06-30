@@ -1,3 +1,6 @@
+import type { StandardNormalizationFields } from "./normalization-result.js";
+import { standardFields } from "./normalization-result.js";
+
 export interface DateNormalizationResult {
   rawDate: string;
   kind: "single" | "range" | "invalid";
@@ -8,6 +11,16 @@ export interface DateNormalizationResult {
   confidence: "high" | "low";
   warnings: string[];
 }
+
+type DateNormalizedValue =
+  | string
+  | {
+      startDate: string;
+      endDate: string;
+    };
+
+type DateNormalizationOutput = DateNormalizationResult &
+  StandardNormalizationFields<DateNormalizedValue>;
 
 const DATE_TOKEN_PATTERN =
   /(\d{4})\s*(?:년|[./-])\s*(\d{1,2})\s*(?:월|[./-])\s*(\d{1,2})\s*(?:일)?|\b(\d{4})(\d{2})(\d{2})\b|\b(\d{2})(\d{2})(\d{2})\b/g;
@@ -67,7 +80,7 @@ function extractDates(rawDate: string): { dates: string[]; invalidTokens: string
   return { dates, invalidTokens };
 }
 
-export function normalizeDateInput(rawDate: string): DateNormalizationResult {
+export function normalizeDateInput(rawDate: string): DateNormalizationOutput {
   const warnings: string[] = [];
   const { dates, invalidTokens } = extractDates(rawDate);
 
@@ -77,6 +90,7 @@ export function normalizeDateInput(rawDate: string): DateNormalizationResult {
 
   if (dates.length === 0) {
     return {
+      ...standardFields("date", null, false),
       rawDate,
       kind: "invalid",
       date: null,
@@ -93,6 +107,7 @@ export function normalizeDateInput(rawDate: string): DateNormalizationResult {
 
   if (dates.length === 1) {
     return {
+      ...standardFields("date", dates[0], true),
       rawDate,
       kind: "single",
       date: dates[0],
@@ -114,6 +129,14 @@ export function normalizeDateInput(rawDate: string): DateNormalizationResult {
   }
 
   return {
+    ...standardFields(
+      "dateRange",
+      {
+        startDate,
+        endDate
+      },
+      warnings.length === 0
+    ),
     rawDate,
     kind: "range",
     date: null,

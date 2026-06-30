@@ -1,4 +1,6 @@
 import type { AssetSubType } from "../domain/types.js";
+import type { StandardNormalizationFields } from "./normalization-result.js";
+import { standardFields } from "./normalization-result.js";
 
 export interface AssetNormalizationResult {
   rawAsset: string;
@@ -8,16 +10,20 @@ export interface AssetNormalizationResult {
   warnings: string[];
 }
 
+type AssetNormalizationOutput = AssetNormalizationResult &
+  StandardNormalizationFields<AssetSubType>;
+
 function compact(value: string): string {
   return value.trim().replace(/\s+/g, "");
 }
 
-export function normalizeAssetInput(rawAsset: string): AssetNormalizationResult {
+export function normalizeAssetInput(rawAsset: string): AssetNormalizationOutput {
   const value = compact(rawAsset);
   const warnings: string[] = [];
 
   if (!value) {
     return {
+      ...standardFields("asset.subType", null, false),
       rawAsset,
       assetSubType: null,
       candidates: [],
@@ -28,6 +34,7 @@ export function normalizeAssetInput(rawAsset: string): AssetNormalizationResult 
 
   if (/분양권|입주권/.test(value)) {
     return {
+      ...standardFields("asset.subType", null, false),
       rawAsset,
       assetSubType: null,
       candidates: [],
@@ -38,6 +45,7 @@ export function normalizeAssetInput(rawAsset: string): AssetNormalizationResult 
 
   if (/1세대1주택|1가구1주택/.test(value)) {
     return {
+      ...standardFields("asset.subType", "housing_1h1h", true),
       rawAsset,
       assetSubType: "housing_1h1h",
       candidates: ["housing_1h1h"],
@@ -48,6 +56,7 @@ export function normalizeAssetInput(rawAsset: string): AssetNormalizationResult 
 
   if (/아파트|주택|빌라|연립|다세대|다가구|단독주택/.test(value)) {
     return {
+      ...standardFields("asset.subType", "housing", true),
       rawAsset,
       assetSubType: "housing",
       candidates: ["housing"],
@@ -61,6 +70,7 @@ export function normalizeAssetInput(rawAsset: string): AssetNormalizationResult 
       warnings.push("오피스텔은 실제 용도에 따라 주택 판단이 달라질 수 있어 추가 확인이 필요합니다.");
     }
     return {
+      ...standardFields("asset.subType", "building", warnings.length === 0),
       rawAsset,
       assetSubType: "building",
       candidates: ["building"],
@@ -72,6 +82,7 @@ export function normalizeAssetInput(rawAsset: string): AssetNormalizationResult 
   if (/토지|대지|임야|농지|전답|논|밭/.test(value)) {
     if (/조정.*비사업|비사업.*조정/.test(value)) {
       return {
+        ...standardFields("asset.subType", "land_nonbusiness_adj", true),
         rawAsset,
         assetSubType: "land_nonbusiness_adj",
         candidates: ["land_nonbusiness_adj"],
@@ -81,6 +92,7 @@ export function normalizeAssetInput(rawAsset: string): AssetNormalizationResult 
     }
     if (/비사업/.test(value)) {
       return {
+        ...standardFields("asset.subType", "land_nonbusiness", true),
         rawAsset,
         assetSubType: "land_nonbusiness",
         candidates: ["land_nonbusiness"],
@@ -90,6 +102,7 @@ export function normalizeAssetInput(rawAsset: string): AssetNormalizationResult 
     }
     if (/사업용/.test(value)) {
       return {
+        ...standardFields("asset.subType", "land_business", true),
         rawAsset,
         assetSubType: "land_business",
         candidates: ["land_business"],
@@ -99,6 +112,7 @@ export function normalizeAssetInput(rawAsset: string): AssetNormalizationResult 
     }
 
     return {
+      ...standardFields("asset.subType", null, false),
       rawAsset,
       assetSubType: null,
       candidates: ["land_business", "land_nonbusiness", "land_nonbusiness_adj"],
@@ -108,6 +122,7 @@ export function normalizeAssetInput(rawAsset: string): AssetNormalizationResult 
   }
 
   return {
+    ...standardFields("asset.subType", null, false),
     rawAsset,
     assetSubType: null,
     candidates: [],

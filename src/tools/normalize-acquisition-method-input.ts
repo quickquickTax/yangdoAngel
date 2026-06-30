@@ -1,3 +1,6 @@
+import type { StandardNormalizationFields } from "./normalization-result.js";
+import { standardFields } from "./normalization-result.js";
+
 export type AcquisitionMethod = "purchase" | "inheritance" | "gift" | "other";
 
 export interface AcquisitionMethodNormalizationResult {
@@ -7,17 +10,22 @@ export interface AcquisitionMethodNormalizationResult {
   warnings: string[];
 }
 
+type AcquisitionMethodNormalizationOutput =
+  AcquisitionMethodNormalizationResult &
+    StandardNormalizationFields<AcquisitionMethod>;
+
 function compact(value: string): string {
   return value.trim().replace(/\s+/g, "");
 }
 
 export function normalizeAcquisitionMethodInput(
   rawMethod: string
-): AcquisitionMethodNormalizationResult {
+): AcquisitionMethodNormalizationOutput {
   const value = compact(rawMethod);
 
   if (!value) {
     return {
+      ...standardFields("acquisition.method", null, false),
       rawMethod,
       method: null,
       confidence: "low",
@@ -26,16 +34,35 @@ export function normalizeAcquisitionMethodInput(
   }
 
   if (/상속/.test(value)) {
-    return { rawMethod, method: "inheritance", confidence: "high", warnings: [] };
+    return {
+      ...standardFields("acquisition.method", "inheritance", true),
+      rawMethod,
+      method: "inheritance",
+      confidence: "high",
+      warnings: []
+    };
   }
   if (/증여/.test(value)) {
-    return { rawMethod, method: "gift", confidence: "high", warnings: [] };
+    return {
+      ...standardFields("acquisition.method", "gift", true),
+      rawMethod,
+      method: "gift",
+      confidence: "high",
+      warnings: []
+    };
   }
   if (/매매|구입|취득|매수|매입|샀|구매|분양받/.test(value)) {
-    return { rawMethod, method: "purchase", confidence: "high", warnings: [] };
+    return {
+      ...standardFields("acquisition.method", "purchase", true),
+      rawMethod,
+      method: "purchase",
+      confidence: "high",
+      warnings: []
+    };
   }
   if (/교환|대물|부담부|기타/.test(value)) {
     return {
+      ...standardFields("acquisition.method", "other", true),
       rawMethod,
       method: "other",
       confidence: "high",
@@ -44,6 +71,7 @@ export function normalizeAcquisitionMethodInput(
   }
 
   return {
+    ...standardFields("acquisition.method", null, false),
     rawMethod,
     method: null,
     confidence: "low",

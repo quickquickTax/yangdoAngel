@@ -1,3 +1,6 @@
+import type { StandardNormalizationFields } from "./normalization-result.js";
+import { standardFields } from "./normalization-result.js";
+
 export interface BooleanNormalizationResult {
   rawValue: string;
   value: boolean | null;
@@ -6,15 +9,19 @@ export interface BooleanNormalizationResult {
   warnings: string[];
 }
 
+type BooleanNormalizationOutput = BooleanNormalizationResult &
+  StandardNormalizationFields<boolean>;
+
 function compact(value: string): string {
   return value.trim().replace(/\s+/g, "");
 }
 
-export function normalizeBooleanInput(rawValue: string): BooleanNormalizationResult {
+export function normalizeBooleanInput(rawValue: string): BooleanNormalizationOutput {
   const value = compact(rawValue);
 
   if (!value) {
     return {
+      ...standardFields("boolean", null, false),
       rawValue,
       value: null,
       normalized: null,
@@ -25,6 +32,7 @@ export function normalizeBooleanInput(rawValue: string): BooleanNormalizationRes
 
   if (/모름|몰라|불명|미확인|확인필요|unknown/i.test(value)) {
     return {
+      ...standardFields("boolean", null, false),
       rawValue,
       value: null,
       normalized: "unknown",
@@ -34,14 +42,29 @@ export function normalizeBooleanInput(rawValue: string): BooleanNormalizationRes
   }
 
   if (/아니|아님|없음|없어요|해당없|미신청|안함|false|no/i.test(value)) {
-    return { rawValue, value: false, normalized: "false", confidence: "high", warnings: [] };
+    return {
+      ...standardFields("boolean", false, true),
+      rawValue,
+      value: false,
+      normalized: "false",
+      confidence: "high",
+      warnings: []
+    };
   }
 
   if (/네|예|맞|있음|있어요|해당|신청|요청|true|yes/i.test(value)) {
-    return { rawValue, value: true, normalized: "true", confidence: "high", warnings: [] };
+    return {
+      ...standardFields("boolean", true, true),
+      rawValue,
+      value: true,
+      normalized: "true",
+      confidence: "high",
+      warnings: []
+    };
   }
 
   return {
+    ...standardFields("boolean", null, false),
     rawValue,
     value: null,
     normalized: null,

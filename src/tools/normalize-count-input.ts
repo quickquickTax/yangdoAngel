@@ -1,9 +1,15 @@
+import type { StandardNormalizationFields } from "./normalization-result.js";
+import { standardFields } from "./normalization-result.js";
+
 export interface CountNormalizationResult {
   rawCount: string;
   count: number | null;
   confidence: "high" | "low";
   warnings: string[];
 }
+
+type CountNormalizationOutput = CountNormalizationResult &
+  StandardNormalizationFields<number>;
 
 const KOREAN_DIGITS: Record<string, number> = {
   영: 0,
@@ -38,11 +44,12 @@ function compact(value: string): string {
   return value.trim().replace(/\s+/g, "");
 }
 
-export function normalizeCountInput(rawCount: string): CountNormalizationResult {
+export function normalizeCountInput(rawCount: string): CountNormalizationOutput {
   const value = compact(rawCount);
 
   if (!value) {
     return {
+      ...standardFields("household.houseCount", null, false),
       rawCount,
       count: null,
       confidence: "low",
@@ -51,12 +58,19 @@ export function normalizeCountInput(rawCount: string): CountNormalizationResult 
   }
 
   if (/없음|없어요|무주택|0채|0개|영채|공채/.test(value)) {
-    return { rawCount, count: 0, confidence: "high", warnings: [] };
+    return {
+      ...standardFields("household.houseCount", 0, true),
+      rawCount,
+      count: 0,
+      confidence: "high",
+      warnings: []
+    };
   }
 
   const numericMatch = value.match(/(\d+)/);
   if (numericMatch) {
     return {
+      ...standardFields("household.houseCount", Number(numericMatch[1]), true),
       rawCount,
       count: Number(numericMatch[1]),
       confidence: "high",
@@ -66,11 +80,18 @@ export function normalizeCountInput(rawCount: string): CountNormalizationResult 
 
   for (const [token, count] of Object.entries(KOREAN_DIGITS)) {
     if (value.includes(token)) {
-      return { rawCount, count, confidence: "high", warnings: [] };
+      return {
+        ...standardFields("household.houseCount", count, true),
+        rawCount,
+        count,
+        confidence: "high",
+        warnings: []
+      };
     }
   }
 
   return {
+    ...standardFields("household.houseCount", null, false),
     rawCount,
     count: null,
     confidence: "low",

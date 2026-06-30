@@ -156,6 +156,8 @@ AI: 계산에 필요한 주택 수, 거주기간, 조정대상지역 여부,
 
 AI는 사용자 답변이 자연어로 들어오면 해당 `normalize_*` 도구로 계산 스키마에 맞게 변환한 뒤 `caseData`에 누적합니다. 이후 `prepare_capital_gains_case_checklist`, `validate_capital_gains_case` 순서로 호출하고, 검증을 통과한 경우에만 `calculate_capital_gains_tax`를 호출해야 합니다.
 
+각 정규화 도구는 `targetField`, `normalizedValue`, `readyForCaseData`를 공통으로 반환합니다. `readyForCaseData=false`이면 사용자 확인을 먼저 받아야 합니다.
+
 ## PlayMCP 호환성
 
 - MCP 프로토콜: `2025-03-26` ~ `2025-11-25`

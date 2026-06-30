@@ -1,4 +1,6 @@
 import type { VerificationStatus } from "../domain/types.js";
+import type { StandardNormalizationFields } from "./normalization-result.js";
+import { standardFields } from "./normalization-result.js";
 
 export interface ExemptionVerificationNormalizationResult {
   rawStatus: string;
@@ -7,17 +9,22 @@ export interface ExemptionVerificationNormalizationResult {
   warnings: string[];
 }
 
+type ExemptionVerificationNormalizationOutput =
+  ExemptionVerificationNormalizationResult &
+    StandardNormalizationFields<VerificationStatus>;
+
 function compact(value: string): string {
   return value.trim().replace(/\s+/g, "");
 }
 
 export function normalizeExemptionVerificationInput(
   rawStatus: string
-): ExemptionVerificationNormalizationResult {
+): ExemptionVerificationNormalizationOutput {
   const value = compact(rawStatus);
 
   if (!value) {
     return {
+      ...standardFields("household.exemptionVerificationStatus", null, false),
       rawStatus,
       status: null,
       confidence: "low",
@@ -27,6 +34,11 @@ export function normalizeExemptionVerificationInput(
 
   if (/세무사|세무전문가|전문가|검증완료|확인완료|검토완료/.test(value)) {
     return {
+      ...standardFields(
+        "household.exemptionVerificationStatus",
+        "verified_by_tax_professional",
+        true
+      ),
       rawStatus,
       status: "verified_by_tax_professional",
       confidence: "high",
@@ -36,6 +48,7 @@ export function normalizeExemptionVerificationInput(
 
   if (/일부|부분|대략|간단히/.test(value)) {
     return {
+      ...standardFields("household.exemptionVerificationStatus", "partially_verified", true),
       rawStatus,
       status: "partially_verified",
       confidence: "high",
@@ -45,6 +58,7 @@ export function normalizeExemptionVerificationInput(
 
   if (/해당없|대상아님|비과세안|신청안|요청안|미신청|불가|안돼/.test(value)) {
     return {
+      ...standardFields("household.exemptionVerificationStatus", "not_eligible", true),
       rawStatus,
       status: "not_eligible",
       confidence: "high",
@@ -54,6 +68,7 @@ export function normalizeExemptionVerificationInput(
 
   if (/미검증|확인안|검토전|아직|안했|안받/.test(value)) {
     return {
+      ...standardFields("household.exemptionVerificationStatus", "not_verified", true),
       rawStatus,
       status: "not_verified",
       confidence: "high",
@@ -63,6 +78,7 @@ export function normalizeExemptionVerificationInput(
 
   if (/모름|모르|몰라|불명|미확인|확인필요|unknown/i.test(value)) {
     return {
+      ...standardFields("household.exemptionVerificationStatus", "unknown", true),
       rawStatus,
       status: "unknown",
       confidence: "high",
@@ -71,6 +87,7 @@ export function normalizeExemptionVerificationInput(
   }
 
   return {
+    ...standardFields("household.exemptionVerificationStatus", null, false),
     rawStatus,
     status: null,
     confidence: "low",

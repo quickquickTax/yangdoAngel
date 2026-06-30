@@ -1,5 +1,13 @@
 # MCP 도구 계약
 
+모든 `normalize_*` 도구는 기존 개별 반환값과 함께 다음 공통 필드를 반환합니다.
+
+- `targetField`: 정규화 값을 넣을 권장 `caseData` 필드 또는 범용 필드명
+- `normalizedValue`: 정규화된 값
+- `readyForCaseData`: 별도 확인 없이 `caseData`에 반영 가능한지 여부
+- `confidence`: `high`, `low`
+- `warnings`: 확인 또는 재입력이 필요한 사유
+
 ## 1. `normalize_asset_input`
 
 사용자가 입력한 자산 종류를 `asset.subType` 후보로 변환합니다.
