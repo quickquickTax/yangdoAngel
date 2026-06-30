@@ -115,6 +115,12 @@ try {
   const toolNames = tools.tools.map((tool) => tool.name);
   console.log("HTTP_TOOLS", toolNames);
   const expectedTools = [
+    "normalize_asset_input",
+    "normalize_acquisition_method_input",
+    "normalize_boolean_input",
+    "normalize_duration_input",
+    "normalize_ownership_input",
+    "normalize_expense_input",
     "normalize_date_input",
     "normalize_amount_input",
     "prepare_capital_gains_case_checklist",
@@ -146,6 +152,22 @@ try {
     ) {
       throw new Error(`Tool ${tool.name} has incomplete PlayMCP annotations.`);
     }
+  }
+
+  const asset = await client.callTool({
+    name: "normalize_asset_input",
+    arguments: { rawAsset: "상가" }
+  });
+  if (asset.structuredContent?.result?.assetSubType !== "building") {
+    throw new Error("HTTP asset normalization failed.");
+  }
+
+  const ownership = await client.callTool({
+    name: "normalize_ownership_input",
+    arguments: { rawOwnership: "부부 반반" }
+  });
+  if (ownership.structuredContent?.result?.ownership?.owners?.[1]?.sharePercent !== 50) {
+    throw new Error("HTTP ownership normalization failed.");
   }
 
   const date = await client.callTool({

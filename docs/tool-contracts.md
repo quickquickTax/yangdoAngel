@@ -1,6 +1,65 @@
 # MCP 도구 계약
 
-## 1. `normalize_date_input`
+## 1. `normalize_asset_input`
+
+사용자가 입력한 자산 종류를 `asset.subType` 후보로 변환합니다.
+
+- `아파트`, `빌라`, `주택` → `housing`
+- `1세대 1주택` → `housing_1h1h`
+- `상가`, `건물`, `오피스텔` → `building`
+- `사업용 토지` → `land_business`
+- `비사업용 토지` → `land_nonbusiness`
+- `조정대상지역 비사업용 토지` → `land_nonbusiness_adj`
+- 토지의 사업용 여부가 불명확하면 후보와 경고를 반환합니다.
+
+## 2. `normalize_acquisition_method_input`
+
+사용자가 입력한 취득 방법을 `acquisition.method` 값으로 변환합니다.
+
+- `샀어요`, `매매`, `구입`, `매수` → `purchase`
+- `상속받음`, `상속` → `inheritance`
+- `증여받음`, `증여` → `gift`
+- `교환`, `부담부`, `기타` → `other`
+
+## 3. `normalize_boolean_input`
+
+사용자의 예/아니오 답변을 boolean 또는 `unknown`으로 변환합니다.
+
+- `네`, `예`, `맞아요`, `있어요` → `true`
+- `아니요`, `없어요`, `해당 없음`, `미신청` → `false`
+- `모름`, `미확인`, `확인 필요` → `unknown`
+
+## 4. `normalize_duration_input`
+
+거주기간 답변을 `household.residenceYears`에 사용할 정수 연 단위 값으로 변환합니다.
+
+- `2년` → `residenceYears=2`
+- `2년 6개월` → `residenceYears=2`, `totalMonths=30`
+- `30개월` → `residenceYears=2`, `totalMonths=30`
+- `거주 안 함` → `residenceYears=0`
+- 개월 수가 있으면 계산 스키마에 맞춰 정수 연 단위로 내림합니다.
+
+## 5. `normalize_ownership_input`
+
+소유 형태와 지분 답변을 `ownership` 구조로 변환합니다.
+
+- `단독명의` → `{ "type": "solo" }`
+- `부부 반반` → 공동명의 50:50
+- `저 60 배우자 40` → 공동명의 60:40
+- 공동명의 지분 합계가 100%가 아니면 경고를 반환합니다.
+
+## 6. `normalize_expense_input`
+
+필요경비 답변을 `expenses` 항목 구조로 변환합니다.
+
+- `취득세` → `acquisition_tax`
+- `복비`, `중개수수료` → `brokerage_fee`
+- `법무사비`, `등기비` → `legal_fee`
+- `인테리어`, `샷시`, `자본적 지출` → `capital_expenditure`
+- `양도 중개수수료`, `광고비` → `transfer_cost`
+- 금액과 증빙 상태를 함께 추출하며, 증빙이 확인되지 않으면 경고를 반환합니다.
+
+## 7. `normalize_date_input`
 
 사용자가 입력한 날짜 또는 기간 표현을 `YYYY-MM-DD` 형식으로 변환합니다.
 
@@ -29,7 +88,7 @@
 - `dates`: 감지된 날짜 목록
 - `warnings`: 확인 또는 재입력이 필요한 사유
 
-## 2. `normalize_amount_input`
+## 8. `normalize_amount_input`
 
 사용자가 입력한 금액 표현을 원 단위 정수로 변환합니다.
 
@@ -55,7 +114,7 @@
 - `confidence`: `high`, `low`
 - `warnings`: 확인 또는 재입력이 필요한 사유
 
-## 3. `prepare_capital_gains_case_checklist`
+## 9. `prepare_capital_gains_case_checklist`
 
 사용자가 직접 입력한 양도소득세 사건 데이터를 기준으로 계산 전 누락값과 위험 항목을 확인합니다.
 
@@ -83,7 +142,7 @@
 - `validationPreview`: 현재 입력의 검증 미리보기
 - `nextTool`: 다음에 호출할 권장 도구
 
-## 4. `validate_capital_gains_case`
+## 10. `validate_capital_gains_case`
 
 계산 전에 입력값과 지원 범위를 확인합니다.
 
@@ -103,7 +162,7 @@
 - `invalid`: 필수값 또는 형식 오류
 - `unsupported`: 현재 버전 미지원
 
-## 5. `calculate_capital_gains_tax`
+## 11. `calculate_capital_gains_tax`
 
 완전한 사건 데이터를 받아 결정론적으로 계산합니다.
 
@@ -117,6 +176,6 @@
 
 이 도구는 누락값을 채우거나 미지원 사건을 억지로 계산하지 않습니다.
 
-## 6. `list_supported_capital_gains_scenarios`
+## 12. `list_supported_capital_gains_scenarios`
 
 지원 규칙 기준일, 지원 사건, 미지원 사건을 반환합니다.

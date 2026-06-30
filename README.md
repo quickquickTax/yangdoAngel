@@ -28,6 +28,11 @@
 - 공동명의와 단독명의 가정 결과 비교
 - 2026.01.01, 260101, 20250101~20260101 같은 날짜 입력 정규화
 - 7.5억, 7억5000만, 750,000,000 같은 금액 입력 정규화
+- 아파트, 상가, 사업용 토지 같은 자산 종류 정규화
+- 샀어요, 상속받음, 증여 같은 취득 방법 정규화
+- 네, 아니요, 모름 같은 예/아니오 답변 정규화
+- 단독명의, 부부 반반, 저 60 배우자 40 같은 소유 형태 정규화
+- 취득세, 복비, 법무사비, 자본적 지출 같은 필요경비 정규화
 - 계산 전 누락값 질문과 위험 체크리스트 생성
 - 1세대 1주택 비과세 요청의 일관성 검증
 - 규칙 적용기간과 양도일 불일치 차단
@@ -35,6 +40,30 @@
 - 증빙이 확인되지 않은 필요경비 차단
 
 ## MCP 도구
+
+### `normalize_asset_input`
+
+아파트, 빌라, 상가, 사업용 토지, 비사업용 토지 같은 사용자 표현을 `asset.subType` 후보로 변환합니다.
+
+### `normalize_acquisition_method_input`
+
+샀어요, 매매, 상속받음, 증여 같은 사용자 표현을 `acquisition.method` 값으로 변환합니다.
+
+### `normalize_boolean_input`
+
+네, 아니요, 없음, 모름 같은 답변을 boolean 또는 `unknown`으로 변환합니다.
+
+### `normalize_duration_input`
+
+2년, 2년 6개월, 30개월, 거주 안 함 같은 답변을 `household.residenceYears`에 사용할 정수 연 단위 값으로 변환합니다.
+
+### `normalize_ownership_input`
+
+단독명의, 부부 공동명의, 반반, 저 60 배우자 40 같은 답변을 `ownership` 구조로 변환합니다.
+
+### `normalize_expense_input`
+
+취득세 1200만원 증빙 있음, 복비 500만원, 법무사비 같은 답변을 `expenses` 항목 구조로 변환합니다.
 
 ### `normalize_date_input`
 
@@ -115,14 +144,14 @@ AI: 계산에 필요한 주택 수, 거주기간, 조정대상지역 여부,
     비과세 적용 요청과 증빙 상태를 추가로 확인합니다.
 ```
 
-AI는 날짜 답변이 들어오면 `normalize_date_input`으로 `YYYY-MM-DD` 형식으로 변환하고, 금액 답변이 들어오면 `normalize_amount_input`으로 원 단위 숫자로 변환한 뒤 사용자 답변을 `caseData`에 누적합니다. 이후 `prepare_capital_gains_case_checklist`, `validate_capital_gains_case` 순서로 호출하고, 검증을 통과한 경우에만 `calculate_capital_gains_tax`를 호출해야 합니다.
+AI는 사용자 답변이 자연어로 들어오면 해당 `normalize_*` 도구로 계산 스키마에 맞게 변환한 뒤 `caseData`에 누적합니다. 이후 `prepare_capital_gains_case_checklist`, `validate_capital_gains_case` 순서로 호출하고, 검증을 통과한 경우에만 `calculate_capital_gains_tax`를 호출해야 합니다.
 
 ## PlayMCP 호환성
 
 - MCP 프로토콜: `2025-03-26` ~ `2025-11-25`
 - 전송 방식: Streamable HTTP
 - 서버 방식: Stateless
-- 도구 개수: 6개
+- 도구 개수: 12개
 - 도구 이름: PlayMCP 문자 규칙 준수
 - 도구 설명: 영문 중심, 영문·국문 서비스명 병기
 - 필수 annotations 제공

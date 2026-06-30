@@ -7,8 +7,14 @@ import {
 import { runValidation } from "./tools/validate-capital-gains-case.js";
 import { runCalculation } from "./tools/calculate-capital-gains-tax.js";
 import { getSupportedScenarios } from "./tools/list-supported-scenarios.js";
+import { normalizeAcquisitionMethodInput } from "./tools/normalize-acquisition-method-input.js";
 import { normalizeAmountInput } from "./tools/normalize-amount-input.js";
+import { normalizeAssetInput } from "./tools/normalize-asset-input.js";
+import { normalizeBooleanInput } from "./tools/normalize-boolean-input.js";
 import { normalizeDateInput } from "./tools/normalize-date-input.js";
+import { normalizeDurationInput } from "./tools/normalize-duration-input.js";
+import { normalizeExpenseInput } from "./tools/normalize-expense-input.js";
+import { normalizeOwnershipInput } from "./tools/normalize-ownership-input.js";
 import { prepareCapitalGainsCaseChecklist } from "./tools/prepare-capital-gains-case-checklist.js";
 
 export const SERVICE_DISPLAY_NAME = "바로바로 양도소득세";
@@ -18,6 +24,7 @@ export const INITIAL_REVIEW_REQUEST =
   "필수 항목은 양도일, 양도가액, 취득일, 취득가액, 취득 방법, 자산 종류, 소유 형태, 세대 주택 수, 거주기간, 조정대상지역 여부, 1세대 1주택 비과세 요청 여부, 같은 과세연도 다른 양도 여부입니다. " +
   "금액을 7.5억, 7억5000만, 750,000,000처럼 답하면 normalize_amount_input으로 원 단위 숫자로 바꾸세요. " +
   "날짜를 2026.01.01, 260101, 20250101~20260101처럼 답하면 normalize_date_input으로 YYYY-MM-DD 형식으로 바꾸세요. " +
+  "자산 종류, 취득 방법, 예/아니오, 거주기간, 소유 형태, 필요경비 답변도 각 정규화 도구로 caseData 형식에 맞게 바꾸세요. " +
   "주민등록번호, 계좌번호, 이름, 전화번호 같은 민감정보는 입력하지 말라고 안내하세요.";
 
 function readOnlyAnnotations(title: string) {
@@ -41,6 +48,7 @@ export function createCapitalGainsMcpServer(): McpServer {
         `${INITIAL_REVIEW_REQUEST} ` +
         `양도가액, 취득가액, 필요경비처럼 금액이 자연어 또는 쉼표 포함 숫자로 입력되면 normalize_amount_input을 먼저 호출해 원 단위 정수로 변환하세요. ` +
         `양도일, 취득일, 거주기간 산정용 날짜가 다양한 형식으로 입력되면 normalize_date_input을 먼저 호출해 YYYY-MM-DD 형식으로 변환하세요. ` +
+        `자산 종류, 취득 방법, 예/아니오, 거주기간, 소유 형태, 필요경비가 자연어로 입력되면 대응하는 normalize_* 도구를 먼저 호출하세요. ` +
         `사용자 답변을 caseData에 누적한 뒤 prepare_capital_gains_case_checklist와 validate_capital_gains_case를 사용해 누락값과 지원 범위를 확인하세요. ` +
         `Do not calculate until missing values and supported scenario checks have been validated.`
     }
@@ -65,6 +73,126 @@ export function createCapitalGainsMcpServer(): McpServer {
         }
       ]
     })
+  );
+
+  server.registerTool(
+    "normalize_asset_input",
+    {
+      title: "자산 종류 정규화",
+      description:
+        `${SERVICE_DISPLAY_NAME}는 아파트, 빌라, 상가, 사업용 토지, 비사업용 토지 같은 자산 종류 답변을 계산 도구의 asset.subType 값으로 변환합니다.`,
+      annotations: readOnlyAnnotations("Normalize Asset Type Input"),
+      inputSchema: {
+        rawAsset: z.string().min(1).describe("사용자가 입력한 자산 종류. 예: 아파트, 상가, 사업용 토지")
+      }
+    },
+    async ({ rawAsset }) => {
+      const result = normalizeAssetInput(rawAsset);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        structuredContent: { result }
+      };
+    }
+  );
+
+  server.registerTool(
+    "normalize_acquisition_method_input",
+    {
+      title: "취득 방법 정규화",
+      description:
+        `${SERVICE_DISPLAY_NAME}는 샀어요, 매매, 상속받음, 증여 같은 취득 방법 답변을 계산 도구의 acquisition.method 값으로 변환합니다.`,
+      annotations: readOnlyAnnotations("Normalize Acquisition Method Input"),
+      inputSchema: {
+        rawMethod: z.string().min(1).describe("사용자가 입력한 취득 방법. 예: 샀어요, 매매, 상속받음, 증여")
+      }
+    },
+    async ({ rawMethod }) => {
+      const result = normalizeAcquisitionMethodInput(rawMethod);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        structuredContent: { result }
+      };
+    }
+  );
+
+  server.registerTool(
+    "normalize_boolean_input",
+    {
+      title: "예/아니오 답변 정규화",
+      description:
+        `${SERVICE_DISPLAY_NAME}는 네, 아니요, 없음, 모름 같은 예/아니오 답변을 조정대상지역 여부, 비과세 요청 여부, 동일연도 다른 양도 여부에 사용할 boolean 또는 unknown 값으로 변환합니다.`,
+      annotations: readOnlyAnnotations("Normalize Boolean Input"),
+      inputSchema: {
+        rawValue: z.string().min(1).describe("사용자가 입력한 예/아니오 답변. 예: 네, 아니요, 없음, 모름")
+      }
+    },
+    async ({ rawValue }) => {
+      const result = normalizeBooleanInput(rawValue);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        structuredContent: { result }
+      };
+    }
+  );
+
+  server.registerTool(
+    "normalize_duration_input",
+    {
+      title: "거주기간 정규화",
+      description:
+        `${SERVICE_DISPLAY_NAME}는 2년, 2년 6개월, 30개월, 거주 안 함 같은 거주기간 답변을 household.residenceYears에 사용할 정수 연 단위 값으로 변환합니다.`,
+      annotations: readOnlyAnnotations("Normalize Residence Duration Input"),
+      inputSchema: {
+        rawDuration: z.string().min(1).describe("사용자가 입력한 거주기간. 예: 2년, 2년 6개월, 30개월, 거주 안 함")
+      }
+    },
+    async ({ rawDuration }) => {
+      const result = normalizeDurationInput(rawDuration);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        structuredContent: { result }
+      };
+    }
+  );
+
+  server.registerTool(
+    "normalize_ownership_input",
+    {
+      title: "소유 형태 정규화",
+      description:
+        `${SERVICE_DISPLAY_NAME}는 단독명의, 부부 공동명의, 반반, 저 60 배우자 40 같은 소유 형태 답변을 ownership 구조로 변환합니다.`,
+      annotations: readOnlyAnnotations("Normalize Ownership Input"),
+      inputSchema: {
+        rawOwnership: z.string().min(1).describe("사용자가 입력한 소유 형태와 지분. 예: 단독명의, 부부 반반, 저 60 배우자 40")
+      }
+    },
+    async ({ rawOwnership }) => {
+      const result = normalizeOwnershipInput(rawOwnership);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        structuredContent: { result }
+      };
+    }
+  );
+
+  server.registerTool(
+    "normalize_expense_input",
+    {
+      title: "필요경비 정규화",
+      description:
+        `${SERVICE_DISPLAY_NAME}는 취득세 1200만원 증빙 있음, 복비 500만원, 법무사비 같은 필요경비 답변을 expenses 항목 구조로 변환합니다.`,
+      annotations: readOnlyAnnotations("Normalize Expense Input"),
+      inputSchema: {
+        rawExpense: z.string().min(1).describe("사용자가 입력한 필요경비. 예: 취득세 1200만원 증빙 있음")
+      }
+    },
+    async ({ rawExpense }) => {
+      const result = normalizeExpenseInput(rawExpense);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        structuredContent: { result }
+      };
+    }
   );
 
   server.registerTool(

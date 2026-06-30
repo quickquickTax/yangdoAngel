@@ -26,6 +26,12 @@ try {
   const toolNames = tools.tools.map((tool) => tool.name);
   console.log("TOOLS", toolNames);
   const expectedTools = [
+    "normalize_asset_input",
+    "normalize_acquisition_method_input",
+    "normalize_boolean_input",
+    "normalize_duration_input",
+    "normalize_ownership_input",
+    "normalize_expense_input",
     "normalize_date_input",
     "normalize_amount_input",
     "prepare_capital_gains_case_checklist",
@@ -42,6 +48,12 @@ try {
     }
   }
   const requiredDescriptionText = {
+    normalize_asset_input: "자산 종류",
+    normalize_acquisition_method_input: "취득 방법",
+    normalize_boolean_input: "예/아니오",
+    normalize_duration_input: "거주기간",
+    normalize_ownership_input: "소유 형태",
+    normalize_expense_input: "필요경비",
     normalize_date_input: "날짜 표현",
     normalize_amount_input: "금액 표현",
     prepare_capital_gains_case_checklist: "누락값",
@@ -88,9 +100,58 @@ try {
     !promptText.includes("양도가액") ||
     !promptText.includes("normalize_date_input") ||
     !promptText.includes("normalize_amount_input") ||
+    !promptText.includes("정규화 도구") ||
     !promptText.includes("개인정보")
   ) {
     throw new Error("The start prompt does not match the manual-input flow.");
+  }
+
+  const asset = await client.callTool({
+    name: "normalize_asset_input",
+    arguments: { rawAsset: "아파트" }
+  });
+  if (asset.structuredContent?.result?.assetSubType !== "housing") {
+    throw new Error("Asset normalization failed.");
+  }
+
+  const acquisitionMethod = await client.callTool({
+    name: "normalize_acquisition_method_input",
+    arguments: { rawMethod: "샀어요" }
+  });
+  if (acquisitionMethod.structuredContent?.result?.method !== "purchase") {
+    throw new Error("Acquisition method normalization failed.");
+  }
+
+  const booleanAnswer = await client.callTool({
+    name: "normalize_boolean_input",
+    arguments: { rawValue: "아니요" }
+  });
+  if (booleanAnswer.structuredContent?.result?.value !== false) {
+    throw new Error("Boolean normalization failed.");
+  }
+
+  const duration = await client.callTool({
+    name: "normalize_duration_input",
+    arguments: { rawDuration: "2년 6개월" }
+  });
+  if (duration.structuredContent?.result?.residenceYears !== 2) {
+    throw new Error("Duration normalization failed.");
+  }
+
+  const ownership = await client.callTool({
+    name: "normalize_ownership_input",
+    arguments: { rawOwnership: "저 60 배우자 40 공동명의" }
+  });
+  if (ownership.structuredContent?.result?.ownership?.owners?.[0]?.sharePercent !== 60) {
+    throw new Error("Ownership normalization failed.");
+  }
+
+  const expense = await client.callTool({
+    name: "normalize_expense_input",
+    arguments: { rawExpense: "취득세 1200만원 증빙 있음" }
+  });
+  if (expense.structuredContent?.result?.expense?.amount !== 12000000) {
+    throw new Error("Expense normalization failed.");
   }
 
   const date = await client.callTool({
