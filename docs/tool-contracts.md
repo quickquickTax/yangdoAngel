@@ -39,7 +39,25 @@
 - `거주 안 함` → `residenceYears=0`
 - 개월 수가 있으면 계산 스키마에 맞춰 정수 연 단위로 내림합니다.
 
-## 5. `normalize_ownership_input`
+## 5. `normalize_count_input`
+
+사용자가 입력한 주택 수를 `household.houseCount`에 사용할 정수 값으로 변환합니다.
+
+- `1채`, `한 채` → `1`
+- `두 채` → `2`
+- `없음`, `무주택` → `0`
+
+## 6. `normalize_exemption_verification_input`
+
+사용자가 입력한 비과세 검증 상태를 `household.exemptionVerificationStatus` 값으로 변환합니다.
+
+- `세무사가 확인했어요`, `전문가 검증 완료` → `verified_by_tax_professional`
+- `일부 검토했어요` → `partially_verified`
+- `아직 검증 안 했어요` → `not_verified`
+- `해당 없음`, `비과세 신청 안 해요` → `not_eligible`
+- `모르겠어요` → `unknown`
+
+## 7. `normalize_ownership_input`
 
 소유 형태와 지분 답변을 `ownership` 구조로 변환합니다.
 
@@ -48,7 +66,7 @@
 - `저 60 배우자 40` → 공동명의 60:40
 - 공동명의 지분 합계가 100%가 아니면 경고를 반환합니다.
 
-## 6. `normalize_expense_input`
+## 8. `normalize_expense_input`
 
 필요경비 답변을 `expenses` 항목 구조로 변환합니다.
 
@@ -59,7 +77,7 @@
 - `양도 중개수수료`, `광고비` → `transfer_cost`
 - 금액과 증빙 상태를 함께 추출하며, 증빙이 확인되지 않으면 경고를 반환합니다.
 
-## 7. `normalize_date_input`
+## 9. `normalize_date_input`
 
 사용자가 입력한 날짜 또는 기간 표현을 `YYYY-MM-DD` 형식으로 변환합니다.
 
@@ -88,7 +106,7 @@
 - `dates`: 감지된 날짜 목록
 - `warnings`: 확인 또는 재입력이 필요한 사유
 
-## 8. `normalize_amount_input`
+## 10. `normalize_amount_input`
 
 사용자가 입력한 금액 표현을 원 단위 정수로 변환합니다.
 
@@ -114,7 +132,7 @@
 - `confidence`: `high`, `low`
 - `warnings`: 확인 또는 재입력이 필요한 사유
 
-## 9. `prepare_capital_gains_case_checklist`
+## 11. `prepare_capital_gains_case_checklist`
 
 사용자가 직접 입력한 양도소득세 사건 데이터를 기준으로 계산 전 누락값과 위험 항목을 확인합니다.
 
@@ -142,7 +160,7 @@
 - `validationPreview`: 현재 입력의 검증 미리보기
 - `nextTool`: 다음에 호출할 권장 도구
 
-## 10. `validate_capital_gains_case`
+## 12. `validate_capital_gains_case`
 
 계산 전에 입력값과 지원 범위를 확인합니다.
 
@@ -162,7 +180,7 @@
 - `invalid`: 필수값 또는 형식 오류
 - `unsupported`: 현재 버전 미지원
 
-## 11. `calculate_capital_gains_tax`
+## 13. `calculate_capital_gains_tax`
 
 완전한 사건 데이터를 받아 결정론적으로 계산합니다.
 
@@ -176,6 +194,6 @@
 
 이 도구는 누락값을 채우거나 미지원 사건을 억지로 계산하지 않습니다.
 
-## 12. `list_supported_capital_gains_scenarios`
+## 14. `list_supported_capital_gains_scenarios`
 
 지원 규칙 기준일, 지원 사건, 미지원 사건을 반환합니다.

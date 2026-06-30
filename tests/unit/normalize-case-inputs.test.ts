@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { normalizeAcquisitionMethodInput } from "../../src/tools/normalize-acquisition-method-input.js";
 import { normalizeAssetInput } from "../../src/tools/normalize-asset-input.js";
 import { normalizeBooleanInput } from "../../src/tools/normalize-boolean-input.js";
+import { normalizeCountInput } from "../../src/tools/normalize-count-input.js";
 import { normalizeDurationInput } from "../../src/tools/normalize-duration-input.js";
+import { normalizeExemptionVerificationInput } from "../../src/tools/normalize-exemption-verification-input.js";
 import { normalizeExpenseInput } from "../../src/tools/normalize-expense-input.js";
 import { normalizeOwnershipInput } from "../../src/tools/normalize-ownership-input.js";
 
@@ -65,6 +67,29 @@ describe("case input normalizers", () => {
 
     expect(result.residenceYears).toBe(residenceYears);
     expect(result.totalMonths).toBe(totalMonths);
+  });
+
+  it.each([
+    ["1채", 1],
+    ["한 채", 1],
+    ["두 채", 2],
+    ["무주택", 0]
+  ])("normalizes count %s", (rawCount, count) => {
+    const result = normalizeCountInput(rawCount);
+
+    expect(result.count).toBe(count);
+  });
+
+  it.each([
+    ["세무사가 확인했어요", "verified_by_tax_professional"],
+    ["일부 검토했어요", "partially_verified"],
+    ["아직 검증 안 했어요", "not_verified"],
+    ["해당 없음", "not_eligible"],
+    ["모르겠어요", "unknown"]
+  ])("normalizes exemption verification %s", (rawStatus, status) => {
+    const result = normalizeExemptionVerificationInput(rawStatus);
+
+    expect(result.status).toBe(status);
   });
 
   it.each([

@@ -30,6 +30,8 @@ try {
     "normalize_acquisition_method_input",
     "normalize_boolean_input",
     "normalize_duration_input",
+    "normalize_count_input",
+    "normalize_exemption_verification_input",
     "normalize_ownership_input",
     "normalize_expense_input",
     "normalize_date_input",
@@ -52,6 +54,8 @@ try {
     normalize_acquisition_method_input: "취득 방법",
     normalize_boolean_input: "예/아니오",
     normalize_duration_input: "거주기간",
+    normalize_count_input: "주택 수",
+    normalize_exemption_verification_input: "비과세 검증 상태",
     normalize_ownership_input: "소유 형태",
     normalize_expense_input: "필요경비",
     normalize_date_input: "날짜 표현",
@@ -136,6 +140,25 @@ try {
   });
   if (duration.structuredContent?.result?.residenceYears !== 2) {
     throw new Error("Duration normalization failed.");
+  }
+
+  const count = await client.callTool({
+    name: "normalize_count_input",
+    arguments: { rawCount: "한 채" }
+  });
+  if (count.structuredContent?.result?.count !== 1) {
+    throw new Error("Count normalization failed.");
+  }
+
+  const exemptionStatus = await client.callTool({
+    name: "normalize_exemption_verification_input",
+    arguments: { rawStatus: "세무사가 확인했어요" }
+  });
+  if (
+    exemptionStatus.structuredContent?.result?.status !==
+    "verified_by_tax_professional"
+  ) {
+    throw new Error("Exemption verification normalization failed.");
   }
 
   const ownership = await client.callTool({

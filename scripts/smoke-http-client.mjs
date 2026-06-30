@@ -119,6 +119,8 @@ try {
     "normalize_acquisition_method_input",
     "normalize_boolean_input",
     "normalize_duration_input",
+    "normalize_count_input",
+    "normalize_exemption_verification_input",
     "normalize_ownership_input",
     "normalize_expense_input",
     "normalize_date_input",
@@ -168,6 +170,14 @@ try {
   });
   if (ownership.structuredContent?.result?.ownership?.owners?.[1]?.sharePercent !== 50) {
     throw new Error("HTTP ownership normalization failed.");
+  }
+
+  const count = await client.callTool({
+    name: "normalize_count_input",
+    arguments: { rawCount: "두 채" }
+  });
+  if (count.structuredContent?.result?.count !== 2) {
+    throw new Error("HTTP count normalization failed.");
   }
 
   const date = await client.callTool({
