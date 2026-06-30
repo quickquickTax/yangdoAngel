@@ -35,6 +35,7 @@
 - 세무사가 확인했어요, 아직 검증 안 했어요 같은 비과세 검증 상태 정규화
 - 단독명의, 부부 반반, 저 60 배우자 40 같은 소유 형태 정규화
 - 취득세, 복비, 법무사비, 자본적 지출 같은 필요경비 정규화
+- 목적 `caseData` 필드 기준 통합 정규화와 `caseDataPatch` 생성
 - 계산 전 누락값 질문과 위험 체크리스트 생성
 - 1세대 1주택 비과세 요청의 일관성 검증
 - 규칙 적용기간과 양도일 불일치 차단
@@ -42,6 +43,16 @@
 - 증빙이 확인되지 않은 필요경비 차단
 
 ## MCP 도구
+
+### `normalize_case_input`
+
+양도일, 양도가액, 취득일, 취득가액, 취득 방법, 자산 종류, 소유 형태, 주택 수, 거주기간, 예/아니오 답변, 비과세 검증 상태, 필요경비 같은 사용자 답변을 목적 `caseData` 필드에 맞게 정규화하고 `caseDataPatch`를 반환합니다.
+
+지원 예시:
+
+- `targetField=transfer.price`, `rawValue=7억 5천만` → `{ "transfer": { "price": 750000000 } }`
+- `targetField=acquisition.date`, `rawValue=250101` → `{ "acquisition": { "date": "2025-01-01" } }`
+- `targetField=annualContext.otherTransfersExist`, `rawValue=아니요` → `{ "annualContext": { "otherTransfersExist": false } }`
 
 ### `normalize_asset_input`
 

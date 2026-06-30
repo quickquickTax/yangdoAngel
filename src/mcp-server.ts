@@ -11,6 +11,10 @@ import { normalizeAcquisitionMethodInput } from "./tools/normalize-acquisition-m
 import { normalizeAmountInput } from "./tools/normalize-amount-input.js";
 import { normalizeAssetInput } from "./tools/normalize-asset-input.js";
 import { normalizeBooleanInput } from "./tools/normalize-boolean-input.js";
+import {
+  NORMALIZABLE_CASE_FIELDS,
+  normalizeCaseInput
+} from "./tools/normalize-case-input.js";
 import { normalizeCountInput } from "./tools/normalize-count-input.js";
 import { normalizeDateInput } from "./tools/normalize-date-input.js";
 import { normalizeDurationInput } from "./tools/normalize-duration-input.js";
@@ -51,6 +55,7 @@ export function createCapitalGainsMcpServer(): McpServer {
         `양도가액, 취득가액, 필요경비처럼 금액이 자연어 또는 쉼표 포함 숫자로 입력되면 normalize_amount_input을 먼저 호출해 원 단위 정수로 변환하세요. ` +
         `양도일, 취득일, 거주기간 산정용 날짜가 다양한 형식으로 입력되면 normalize_date_input을 먼저 호출해 YYYY-MM-DD 형식으로 변환하세요. ` +
         `자산 종류, 취득 방법, 예/아니오, 주택 수, 거주기간, 비과세 검증 상태, 소유 형태, 필요경비가 자연어로 입력되면 대응하는 normalize_* 도구를 먼저 호출하세요. ` +
+        `입력값의 목적 caseData 필드를 알고 있으면 normalize_case_input을 사용해 정규화 결과와 caseDataPatch를 함께 받으세요. ` +
         `사용자 답변을 caseData에 누적한 뒤 prepare_capital_gains_case_checklist와 validate_capital_gains_case를 사용해 누락값과 지원 범위를 확인하세요. ` +
         `Do not calculate until missing values and supported scenario checks have been validated.`
     }
@@ -75,6 +80,29 @@ export function createCapitalGainsMcpServer(): McpServer {
         }
       ]
     })
+  );
+
+  server.registerTool(
+    "normalize_case_input",
+    {
+      title: "사건 입력값 통합 정규화",
+      description:
+        `${SERVICE_DISPLAY_NAME}는 양도일, 양도가액, 취득일, 취득가액, 취득 방법, 자산 종류, 소유 형태, 주택 수, 거주기간, 예/아니오 답변, 비과세 검증 상태, 필요경비 같은 사건 입력값을 목적 caseData 필드에 맞게 정규화하고 caseDataPatch를 반환합니다.`,
+      annotations: readOnlyAnnotations("Normalize Case Input"),
+      inputSchema: {
+        targetField: z
+          .enum(NORMALIZABLE_CASE_FIELDS)
+          .describe("정규화 결과를 넣을 caseData 필드"),
+        rawValue: z.string().min(1).describe("사용자가 입력한 원문 답변")
+      }
+    },
+    async ({ targetField, rawValue }) => {
+      const result = normalizeCaseInput(targetField, rawValue);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        structuredContent: { result }
+      };
+    }
   );
 
   server.registerTool(

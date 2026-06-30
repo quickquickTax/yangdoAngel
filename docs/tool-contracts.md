@@ -8,7 +8,43 @@
 - `confidence`: `high`, `low`
 - `warnings`: 확인 또는 재입력이 필요한 사유
 
-## 1. `normalize_asset_input`
+`normalize_case_input`은 위 공통 필드에 더해 `normalizer`, `caseDataPatch`, `sourceResult`를 반환합니다. 목적 `caseData` 필드를 알고 있으면 이 통합 도구를 우선 사용할 수 있고, 세부 제어가 필요하면 기존 개별 도구를 그대로 사용할 수 있습니다.
+
+## 1. `normalize_case_input`
+
+사용자 답변을 목적 `caseData` 필드에 맞는 개별 normalizer로 위임하고, 계산 도구 입력 구조와 합치기 쉬운 `caseDataPatch`를 반환합니다.
+
+지원 `targetField`:
+
+- `asset.subType`
+- `transfer.date`
+- `transfer.price`
+- `acquisition.date`
+- `acquisition.price`
+- `acquisition.method`
+- `expenses[]`
+- `ownership`
+- `household.houseCount`
+- `household.residenceYears`
+- `household.isAdjustedArea`
+- `household.oneHouseExemptionClaimed`
+- `household.exemptionVerificationStatus`
+- `annualContext.otherTransfersExist`
+
+지원 예시:
+
+- `targetField=transfer.price`, `rawValue=7억 5천만` → `normalizedValue=750000000`, `caseDataPatch={ "transfer": { "price": 750000000 } }`
+- `targetField=acquisition.date`, `rawValue=250101` → `normalizedValue=2025-01-01`, `caseDataPatch={ "acquisition": { "date": "2025-01-01" } }`
+- `targetField=expenses[]`, `rawValue=취득세 1200만원 증빙 있음` → `caseDataPatch={ "expenses": [{ "type": "acquisition_tax", "amount": 12000000, "evidenceStatus": "available" }] }`
+
+주요 반환 내용:
+
+- `normalizer`: 내부적으로 사용한 개별 정규화 도구명
+- `caseDataPatch`: `readyForCaseData=true`일 때 `caseData`에 병합할 수 있는 부분 객체
+- `sourceResult`: 개별 정규화 도구의 원본 결과
+- 단일 날짜 필드에 기간이 입력되면 `readyForCaseData=false`와 확인 경고를 반환합니다.
+
+## 2. `normalize_asset_input`
 
 사용자가 입력한 자산 종류를 `asset.subType` 후보로 변환합니다.
 
@@ -20,7 +56,7 @@
 - `조정대상지역 비사업용 토지` → `land_nonbusiness_adj`
 - 토지의 사업용 여부가 불명확하면 후보와 경고를 반환합니다.
 
-## 2. `normalize_acquisition_method_input`
+## 3. `normalize_acquisition_method_input`
 
 사용자가 입력한 취득 방법을 `acquisition.method` 값으로 변환합니다.
 
@@ -29,7 +65,7 @@
 - `증여받음`, `증여` → `gift`
 - `교환`, `부담부`, `기타` → `other`
 
-## 3. `normalize_boolean_input`
+## 4. `normalize_boolean_input`
 
 사용자의 예/아니오 답변을 boolean 또는 `unknown`으로 변환합니다.
 
@@ -37,7 +73,7 @@
 - `아니요`, `없어요`, `해당 없음`, `미신청` → `false`
 - `모름`, `미확인`, `확인 필요` → `unknown`
 
-## 4. `normalize_duration_input`
+## 5. `normalize_duration_input`
 
 거주기간 답변을 `household.residenceYears`에 사용할 정수 연 단위 값으로 변환합니다.
 
@@ -47,7 +83,7 @@
 - `거주 안 함` → `residenceYears=0`
 - 개월 수가 있으면 계산 스키마에 맞춰 정수 연 단위로 내림합니다.
 
-## 5. `normalize_count_input`
+## 6. `normalize_count_input`
 
 사용자가 입력한 주택 수를 `household.houseCount`에 사용할 정수 값으로 변환합니다.
 
@@ -55,7 +91,7 @@
 - `두 채` → `2`
 - `없음`, `무주택` → `0`
 
-## 6. `normalize_exemption_verification_input`
+## 7. `normalize_exemption_verification_input`
 
 사용자가 입력한 비과세 검증 상태를 `household.exemptionVerificationStatus` 값으로 변환합니다.
 
@@ -65,7 +101,7 @@
 - `해당 없음`, `비과세 신청 안 해요` → `not_eligible`
 - `모르겠어요` → `unknown`
 
-## 7. `normalize_ownership_input`
+## 8. `normalize_ownership_input`
 
 소유 형태와 지분 답변을 `ownership` 구조로 변환합니다.
 
@@ -74,7 +110,7 @@
 - `저 60 배우자 40` → 공동명의 60:40
 - 공동명의 지분 합계가 100%가 아니면 경고를 반환합니다.
 
-## 8. `normalize_expense_input`
+## 9. `normalize_expense_input`
 
 필요경비 답변을 `expenses` 항목 구조로 변환합니다.
 
@@ -85,7 +121,7 @@
 - `양도 중개수수료`, `광고비` → `transfer_cost`
 - 금액과 증빙 상태를 함께 추출하며, 증빙이 확인되지 않으면 경고를 반환합니다.
 
-## 9. `normalize_date_input`
+## 10. `normalize_date_input`
 
 사용자가 입력한 날짜 또는 기간 표현을 `YYYY-MM-DD` 형식으로 변환합니다.
 
@@ -114,7 +150,7 @@
 - `dates`: 감지된 날짜 목록
 - `warnings`: 확인 또는 재입력이 필요한 사유
 
-## 10. `normalize_amount_input`
+## 11. `normalize_amount_input`
 
 사용자가 입력한 금액 표현을 원 단위 정수로 변환합니다.
 
@@ -140,7 +176,7 @@
 - `confidence`: `high`, `low`
 - `warnings`: 확인 또는 재입력이 필요한 사유
 
-## 11. `prepare_capital_gains_case_checklist`
+## 12. `prepare_capital_gains_case_checklist`
 
 사용자가 직접 입력한 양도소득세 사건 데이터를 기준으로 계산 전 누락값과 위험 항목을 확인합니다.
 
@@ -168,7 +204,7 @@
 - `validationPreview`: 현재 입력의 검증 미리보기
 - `nextTool`: 다음에 호출할 권장 도구
 
-## 12. `validate_capital_gains_case`
+## 13. `validate_capital_gains_case`
 
 계산 전에 입력값과 지원 범위를 확인합니다.
 
@@ -188,7 +224,7 @@
 - `invalid`: 필수값 또는 형식 오류
 - `unsupported`: 현재 버전 미지원
 
-## 13. `calculate_capital_gains_tax`
+## 14. `calculate_capital_gains_tax`
 
 완전한 사건 데이터를 받아 결정론적으로 계산합니다.
 
@@ -202,6 +238,6 @@
 
 이 도구는 누락값을 채우거나 미지원 사건을 억지로 계산하지 않습니다.
 
-## 14. `list_supported_capital_gains_scenarios`
+## 15. `list_supported_capital_gains_scenarios`
 
 지원 규칙 기준일, 지원 사건, 미지원 사건을 반환합니다.

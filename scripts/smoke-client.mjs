@@ -26,6 +26,7 @@ try {
   const toolNames = tools.tools.map((tool) => tool.name);
   console.log("TOOLS", toolNames);
   const expectedTools = [
+    "normalize_case_input",
     "normalize_asset_input",
     "normalize_acquisition_method_input",
     "normalize_boolean_input",
@@ -50,6 +51,7 @@ try {
     }
   }
   const requiredDescriptionText = {
+    normalize_case_input: "사건 입력값",
     normalize_asset_input: "자산 종류",
     normalize_acquisition_method_input: "취득 방법",
     normalize_boolean_input: "예/아니오",
@@ -109,6 +111,19 @@ try {
     promptText.includes("정규화 도구")
   ) {
     throw new Error("The start prompt does not match the manual-input flow.");
+  }
+
+  const caseInput = await client.callTool({
+    name: "normalize_case_input",
+    arguments: { targetField: "transfer.price", rawValue: "7억 5천만" }
+  });
+  const normalizedCaseAmount = caseInput.structuredContent?.result?.normalizedValue;
+  const caseDataPatch = caseInput.structuredContent?.result?.caseDataPatch;
+  if (
+    normalizedCaseAmount !== 750000000 ||
+    caseDataPatch?.transfer?.price !== 750000000
+  ) {
+    throw new Error("Unified case input normalization failed.");
   }
 
   const asset = await client.callTool({

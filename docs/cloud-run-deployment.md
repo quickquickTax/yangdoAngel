@@ -150,7 +150,7 @@ $env:MCP_API_KEY = $apiKey
 npm run smoke:http
 ```
 
-성공하면 `HTTP_TOOLS`에 세 도구가 표시됩니다.
+성공하면 `HTTP_TOOLS`에 등록된 MCP 도구 목록이 표시됩니다.
 
 ## 8. 다른 PC에서 연결
 

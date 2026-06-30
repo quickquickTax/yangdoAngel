@@ -115,6 +115,7 @@ try {
   const toolNames = tools.tools.map((tool) => tool.name);
   console.log("HTTP_TOOLS", toolNames);
   const expectedTools = [
+    "normalize_case_input",
     "normalize_asset_input",
     "normalize_acquisition_method_input",
     "normalize_boolean_input",
@@ -154,6 +155,18 @@ try {
     ) {
       throw new Error(`Tool ${tool.name} has incomplete PlayMCP annotations.`);
     }
+  }
+
+  const caseInput = await client.callTool({
+    name: "normalize_case_input",
+    arguments: { targetField: "acquisition.date", rawValue: "250101" }
+  });
+  if (
+    caseInput.structuredContent?.result?.normalizedValue !== "2025-01-01" ||
+    caseInput.structuredContent?.result?.caseDataPatch?.acquisition?.date !==
+      "2025-01-01"
+  ) {
+    throw new Error("HTTP unified case input normalization failed.");
   }
 
   const asset = await client.callTool({
