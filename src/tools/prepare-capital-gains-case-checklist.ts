@@ -16,10 +16,32 @@ export interface ChecklistItem {
   status: "missing" | "needs_review" | "unsupported_risk";
 }
 
+export type ChecklistQuestionCategory = ChecklistItem["category"] | "validation";
+
+export interface ChecklistQuestion {
+  field: string | null;
+  question: string;
+  requiredForCalculation: boolean;
+  reason: string;
+  status: ChecklistItem["status"] | "validation_question";
+  source: "checklist" | "validation";
+}
+
+export interface ChecklistQuestionGroup {
+  category: ChecklistQuestionCategory;
+  title: string;
+  description: string;
+  requiredCount: number;
+  reviewCount: number;
+  unsupportedRiskCount: number;
+  questions: ChecklistQuestion[];
+}
+
 export interface CapitalGainsCaseChecklistResult {
   status: "ready_for_validation" | "needs_input" | "unsupported_risk";
   checklistItems: ChecklistItem[];
   questions: string[];
+  questionGroups: ChecklistQuestionGroup[];
   validationPreview: ReturnType<typeof runValidation>;
   nextTool: "validate_capital_gains_case" | "calculate_capital_gains_tax";
 }
@@ -47,6 +69,55 @@ function getNested(target: Record<string, unknown>, path: string): unknown {
 function unique(values: string[]): string[] {
   return [...new Set(values)];
 }
+
+const QUESTION_GROUP_META: Record<
+  ChecklistQuestionCategory,
+  { title: string; description: string }
+> = {
+  transaction: {
+    title: "거래 정보",
+    description: "양도일, 취득일, 양도가액, 취득가액처럼 세액 계산의 기본값입니다."
+  },
+  asset: {
+    title: "자산 정보",
+    description: "주택, 건물, 토지 등 자산 유형과 사업용 여부를 확인합니다."
+  },
+  ownership: {
+    title: "소유 형태",
+    description: "단독명의와 공동명의, 지분율, 기본공제 사용 여부를 확인합니다."
+  },
+  household: {
+    title: "세대 및 비과세",
+    description: "주택 수, 거주기간, 조정대상지역, 1세대 1주택 비과세 관련 항목입니다."
+  },
+  annual: {
+    title: "과세연도 맥락",
+    description: "같은 과세연도 다른 양도 여부처럼 합산 검토가 필요한 항목입니다."
+  },
+  expense: {
+    title: "필요경비 및 증빙",
+    description: "취득세, 중개수수료, 법무사 비용, 자본적 지출과 증빙 보유 여부입니다."
+  },
+  support: {
+    title: "지원 범위",
+    description: "세법 기준일과 현재 계산 엔진이 지원하는 사건인지 확인합니다."
+  },
+  validation: {
+    title: "검증 결과 확인",
+    description: "입력값 검증 과정에서 추가로 확인이 필요한 질문입니다."
+  }
+};
+
+const QUESTION_GROUP_ORDER: ChecklistQuestionCategory[] = [
+  "transaction",
+  "asset",
+  "ownership",
+  "household",
+  "annual",
+  "expense",
+  "support",
+  "validation"
+];
 
 const REQUIRED_ITEMS: Array<Omit<ChecklistItem, "status">> = [
   {
@@ -149,6 +220,70 @@ const REQUIRED_ITEMS: Array<Omit<ChecklistItem, "status">> = [
   }
 ];
 
+function buildQuestionGroups(
+  checklistItems: ChecklistItem[],
+  validationQuestions: string[]
+): ChecklistQuestionGroup[] {
+  const seenChecklistQuestions = new Set(checklistItems.map((item) => item.question));
+  const grouped = new Map<ChecklistQuestionCategory, ChecklistQuestion[]>();
+
+  for (const item of checklistItems) {
+    const questions = grouped.get(item.category) ?? [];
+    questions.push({
+      field: item.field,
+      question: item.question,
+      requiredForCalculation: item.requiredForCalculation,
+      reason: item.reason,
+      status: item.status,
+      source: "checklist"
+    });
+    grouped.set(item.category, questions);
+  }
+
+  for (const question of validationQuestions) {
+    if (seenChecklistQuestions.has(question)) {
+      continue;
+    }
+    const questions = grouped.get("validation") ?? [];
+    questions.push({
+      field: null,
+      question,
+      requiredForCalculation: true,
+      reason: "검증 단계에서 추가 확인이 필요한 항목입니다.",
+      status: "validation_question",
+      source: "validation"
+    });
+    grouped.set("validation", questions);
+  }
+
+  return QUESTION_GROUP_ORDER.flatMap((category) => {
+    const questions = grouped.get(category);
+    if (!questions || questions.length === 0) {
+      return [];
+    }
+    const meta = QUESTION_GROUP_META[category];
+    return [
+      {
+        category,
+        title: meta.title,
+        description: meta.description,
+        requiredCount: questions.filter(
+          (question) =>
+            question.requiredForCalculation &&
+            (question.status === "missing" ||
+              question.status === "validation_question")
+        ).length,
+        reviewCount: questions.filter((question) => question.status === "needs_review")
+          .length,
+        unsupportedRiskCount: questions.filter(
+          (question) => question.status === "unsupported_risk"
+        ).length,
+        questions
+      }
+    ];
+  });
+}
+
 export function prepareCapitalGainsCaseChecklist(
   caseData: Record<string, unknown>
 ): CapitalGainsCaseChecklistResult {
@@ -221,6 +356,10 @@ export function prepareCapitalGainsCaseChecklist(
     ...checklistItems.map((item) => item.question),
     ...validationPreview.questions
   ]);
+  const questionGroups = buildQuestionGroups(
+    checklistItems,
+    validationPreview.questions
+  );
 
   return {
     status: hasUnsupportedRisk
@@ -230,6 +369,7 @@ export function prepareCapitalGainsCaseChecklist(
         : "ready_for_validation",
     checklistItems,
     questions,
+    questionGroups,
     validationPreview,
     nextTool: validationPreview.validForCalculation
       ? "calculate_capital_gains_tax"

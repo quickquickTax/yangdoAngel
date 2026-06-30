@@ -178,12 +178,13 @@
 
 ## 12. `prepare_capital_gains_case_checklist`
 
-사용자가 직접 입력한 양도소득세 사건 데이터를 기준으로 계산 전 누락값과 위험 항목을 확인합니다.
+사용자가 직접 입력한 양도소득세 사건 데이터를 기준으로 계산 전 누락값과 위험 항목을 확인하고, 사용자에게 물어볼 질문을 주제별로 묶어 반환합니다.
 
 - 입력값을 임의로 추정하지 않습니다.
 - 기존 계산 도구의 `caseData` 필드명을 그대로 사용합니다.
 - 일부 필드만 전달해도 누락 질문을 반환합니다.
 - `validationPreview`로 현재 입력의 검증 상태를 함께 반환합니다.
+- 기존 `questions` 배열은 하위 호환성을 위해 유지합니다.
 
 주요 체크 항목:
 
@@ -201,8 +202,19 @@
 - `status`: `ready_for_validation`, `needs_input`, `unsupported_risk`
 - `checklistItems`: 누락값과 검토 항목 목록
 - `questions`: 사용자에게 물어볼 질문
+- `questionGroups`: 거래 정보, 자산 정보, 소유 형태, 세대 및 비과세, 과세연도 맥락, 필요경비 및 증빙, 지원 범위, 검증 결과 확인 단위로 묶은 질문 목록
 - `validationPreview`: 현재 입력의 검증 미리보기
 - `nextTool`: 다음에 호출할 권장 도구
+
+`questionGroups` 항목 구조:
+
+- `category`: `transaction`, `asset`, `ownership`, `household`, `annual`, `expense`, `support`, `validation`
+- `title`: 사용자에게 표시할 그룹 제목
+- `description`: 그룹 목적 설명
+- `requiredCount`: 계산 필수 누락 또는 검증 질문 수
+- `reviewCount`: 계산 전 검토 권장 질문 수
+- `unsupportedRiskCount`: 현재 엔진 미지원 위험 질문 수
+- `questions`: 해당 그룹의 질문 항목 목록
 
 ## 13. `validate_capital_gains_case`
 

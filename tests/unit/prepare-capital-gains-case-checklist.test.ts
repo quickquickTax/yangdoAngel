@@ -47,6 +47,42 @@ describe("prepareCapitalGainsCaseChecklist", () => {
       ])
     );
     expect(result.questions).toContain("취득일 또는 취득 잔금일은 언제입니까?");
+    expect(result.questionGroups.map((group) => group.category)).toEqual([
+      "transaction",
+      "asset",
+      "ownership",
+      "household",
+      "annual",
+      "expense",
+      "support",
+      "validation"
+    ]);
+    expect(result.questionGroups).toContainEqual(
+      expect.objectContaining({
+        category: "transaction",
+        title: "거래 정보",
+        requiredCount: 2,
+        questions: expect.arrayContaining([
+          expect.objectContaining({
+            field: "acquisition.date",
+            question: "취득일 또는 취득 잔금일은 언제입니까?",
+            source: "checklist"
+          })
+        ])
+      })
+    );
+    expect(result.questionGroups).toContainEqual(
+      expect.objectContaining({
+        category: "validation",
+        questions: expect.arrayContaining([
+          expect.objectContaining({
+            field: null,
+            source: "validation",
+            status: "validation_question"
+          })
+        ])
+      })
+    );
   });
 
   it("marks a complete supported case as ready for calculation after validation", () => {
@@ -62,6 +98,19 @@ describe("prepareCapitalGainsCaseChecklist", () => {
         status: "needs_review"
       })
     );
+    expect(result.questionGroups).toEqual([
+      expect.objectContaining({
+        category: "expense",
+        reviewCount: 1,
+        requiredCount: 0,
+        questions: [
+          expect.objectContaining({
+            field: "expenses",
+            status: "needs_review"
+          })
+        ]
+      })
+    ]);
   });
 
   it("flags unsupported acquisition methods before calculation", () => {
@@ -77,5 +126,17 @@ describe("prepareCapitalGainsCaseChecklist", () => {
       })
     );
     expect(result.validationPreview.status).toBe("unsupported");
+    expect(result.questionGroups).toContainEqual(
+      expect.objectContaining({
+        category: "support",
+        unsupportedRiskCount: 1,
+        questions: expect.arrayContaining([
+          expect.objectContaining({
+            field: "acquisition.method",
+            status: "unsupported_risk"
+          })
+        ])
+      })
+    );
   });
 });

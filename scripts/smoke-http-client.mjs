@@ -214,6 +214,25 @@ try {
     throw new Error(`Expected HTTP normalized amount 750000000, got ${normalizedAmount}.`);
   }
 
+  const checklist = await client.callTool({
+    name: "prepare_capital_gains_case_checklist",
+    arguments: {
+      caseData: {
+        transfer: { date: "2026-06-01", price: 600000000 }
+      }
+    }
+  });
+  const questionGroups = checklist.structuredContent?.result?.questionGroups;
+  if (
+    !questionGroups?.some(
+      (group) =>
+        group.category === "transaction" &&
+        group.questions?.some((question) => question.field === "acquisition.date")
+    )
+  ) {
+    throw new Error("HTTP checklist question grouping failed.");
+  }
+
   const supported = await client.callTool({
     name: "list_supported_capital_gains_scenarios",
     arguments: { detailLevel: "summary" }

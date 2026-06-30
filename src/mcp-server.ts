@@ -319,7 +319,7 @@ export function createCapitalGainsMcpServer(): McpServer {
       title: "계산 전 체크리스트 생성",
       description:
         `${SERVICE_DISPLAY_NAME}는 사용자가 입력한 caseData를 기준으로 누락값, 1세대 1주택, 조정대상지역, 공동명의, 취득 방법, 동일연도 양도, 필요경비 증빙 체크리스트를 생성합니다. ` +
-        `반환된 질문에 답을 채운 뒤 validate_capital_gains_case를 호출하세요. ` +
+        `반환된 질문 그룹에 답을 채운 뒤 validate_capital_gains_case를 호출하세요. ` +
         `값을 임의로 추정하지 않고 기존 계산 도구의 입력 구조와 호환되는 필드명을 사용합니다.`,
       annotations: readOnlyAnnotations("Prepare Pre-calculation Checklist"),
       inputSchema: {

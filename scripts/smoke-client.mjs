@@ -214,6 +214,32 @@ try {
     throw new Error(`Expected normalized amount 750000000, got ${normalizedAmount}.`);
   }
 
+  const checklist = await client.callTool({
+    name: "prepare_capital_gains_case_checklist",
+    arguments: {
+      caseData: {
+        transfer: { date: "2026-06-01", price: 600000000 }
+      }
+    }
+  });
+  const questionGroups = checklist.structuredContent?.result?.questionGroups;
+  const transactionGroup = questionGroups?.find(
+    (group) => group.category === "transaction"
+  );
+  const validationGroup = questionGroups?.find(
+    (group) => group.category === "validation"
+  );
+  if (
+    !transactionGroup?.questions?.some(
+      (question) => question.field === "acquisition.date"
+    ) ||
+    !validationGroup?.questions?.some(
+      (question) => question.source === "validation"
+    )
+  ) {
+    throw new Error("Checklist question grouping failed.");
+  }
+
   const validation = await client.callTool({
     name: "validate_capital_gains_case",
     arguments: {
