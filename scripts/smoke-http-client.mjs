@@ -114,16 +114,25 @@ try {
   const tools = await client.listTools();
   const toolNames = tools.tools.map((tool) => tool.name);
   console.log("HTTP_TOOLS", toolNames);
-  if (!toolNames.includes("calculate_capital_gains_tax")) {
-    throw new Error("Calculation tool was not exposed by the HTTP server.");
+  const expectedTools = [
+    "prepare_capital_gains_case_checklist",
+    "validate_capital_gains_case",
+    "calculate_capital_gains_tax",
+    "list_supported_capital_gains_scenarios"
+  ];
+  if (toolNames.length !== expectedTools.length) {
+    throw new Error(`Expected ${expectedTools.length} HTTP tools, got ${toolNames.length}.`);
+  }
+  for (const expectedTool of expectedTools) {
+    if (!toolNames.includes(expectedTool)) {
+      throw new Error(`Missing expected HTTP tool ${expectedTool}.`);
+    }
   }
   for (const tool of tools.tools) {
     if (
-      !tool.description?.includes(
-        "Korean Capital Gains Tax Advisor(한국 양도소득세 도우미)"
-      )
+      !tool.description?.includes("바로바로 양도소득세")
     ) {
-      throw new Error(`Tool ${tool.name} is missing the bilingual service name.`);
+      throw new Error(`Tool ${tool.name} is missing the service name.`);
     }
     const annotations = tool.annotations;
     if (

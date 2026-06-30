@@ -23,8 +23,24 @@ const client = new Client(
 try {
   await client.connect(transport);
   const tools = await client.listTools();
-  console.log("TOOLS", tools.tools.map((tool) => tool.name));
+  const toolNames = tools.tools.map((tool) => tool.name);
+  console.log("TOOLS", toolNames);
+  const expectedTools = [
+    "prepare_capital_gains_case_checklist",
+    "validate_capital_gains_case",
+    "calculate_capital_gains_tax",
+    "list_supported_capital_gains_scenarios"
+  ];
+  if (toolNames.length !== expectedTools.length) {
+    throw new Error(`Expected ${expectedTools.length} tools, got ${toolNames.length}.`);
+  }
+  for (const expectedTool of expectedTools) {
+    if (!toolNames.includes(expectedTool)) {
+      throw new Error(`Missing expected tool ${expectedTool}.`);
+    }
+  }
   const requiredDescriptionText = {
+    prepare_capital_gains_case_checklist: "누락값",
     validate_capital_gains_case: "필수 입력값",
     calculate_capital_gains_tax: "예상액",
     list_supported_capital_gains_scenarios: "지원하는 세법 기준일"
@@ -56,7 +72,7 @@ try {
     (prompt) => prompt.name === "start_capital_gains_tax_review"
   );
   if (!startPrompt) {
-    throw new Error("The contract-photo start prompt is missing.");
+    throw new Error("The start prompt is missing.");
   }
   const promptResult = await client.getPrompt({ name: startPrompt.name });
   const promptText = promptResult.messages
@@ -64,8 +80,11 @@ try {
       message.content.type === "text" ? message.content.text : ""
     )
     .join("\n");
-  if (!promptText.includes("양도계약서") || !promptText.includes("주민등록번호")) {
-    throw new Error("The start prompt is missing contract or privacy guidance.");
+  if (
+    !promptText.includes("양도가액") ||
+    !promptText.includes("개인정보")
+  ) {
+    throw new Error("The start prompt does not match the manual-input flow.");
   }
 
   const validation = await client.callTool({

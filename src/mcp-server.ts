@@ -7,17 +7,14 @@ import {
 import { runValidation } from "./tools/validate-capital-gains-case.js";
 import { runCalculation } from "./tools/calculate-capital-gains-tax.js";
 import { getSupportedScenarios } from "./tools/list-supported-scenarios.js";
-import { sanitizePersonalInfo } from "./tools/sanitize-personal-info.js";
-import { extractContractCaseFields } from "./tools/extract-contract-case-fields.js";
 import { prepareCapitalGainsCaseChecklist } from "./tools/prepare-capital-gains-case-checklist.js";
 
 export const SERVICE_DISPLAY_NAME = "바로바로 양도소득세";
 
-export const INITIAL_CONTRACT_REQUEST =
-  "양도소득세 검토를 시작하려면 양도계약서와 취득계약서 사진을 올려달라고 안내하세요. " +
-  "사진은 계약일, 거래금액, 부동산 종류를 확인할 수 있도록 선명해야 합니다. " +
-  "사진을 올리면 시스템이 주민등록번호·이름·전화번호·계좌번호를 자동으로 마스킹합니다. " +
-  "계약서가 없거나 사진을 올릴 수 없으면 필요한 정보를 질문으로 수집하세요.";
+export const INITIAL_REVIEW_REQUEST =
+  "양도소득세 검토를 시작하려면 개인정보 없이 계산에 필요한 정보를 질문으로 수집하세요. " +
+  "필수 항목은 양도일, 양도가액, 취득일, 취득가액, 취득 방법, 자산 종류, 소유 형태, 세대 주택 수, 거주기간, 조정대상지역 여부, 1세대 1주택 비과세 요청 여부, 같은 과세연도 다른 양도 여부입니다. " +
+  "주민등록번호, 계좌번호, 이름, 전화번호 같은 민감정보는 입력하지 말라고 안내하세요.";
 
 function readOnlyAnnotations(title: string) {
   return {
@@ -37,11 +34,9 @@ export function createCapitalGainsMcpServer(): McpServer {
     },
     {
       instructions:
-        `${INITIAL_CONTRACT_REQUEST} ` +
-        `계약서 사진에서 텍스트를 읽었으면 반드시 sanitize_contract_text 도구를 가장 먼저 호출하여 개인정보를 마스킹하세요. ` +
-        `마스킹된 결과만 extract_contract_case_fields와 prepare_capital_gains_case_checklist에 전달하고, 원본 개인정보(주민등록번호·이름 등)는 절대 출력하거나 도구 인자로 사용하지 마세요. ` +
-        `계산 전에는 prepare_capital_gains_case_checklist와 validate_capital_gains_case를 사용해 누락값과 지원 범위를 확인하세요. ` +
-        `Do not calculate until missing values and document evidence have been validated.`
+        `${INITIAL_REVIEW_REQUEST} ` +
+        `사용자 답변을 caseData에 누적한 뒤 prepare_capital_gains_case_checklist와 validate_capital_gains_case를 사용해 누락값과 지원 범위를 확인하세요. ` +
+        `Do not calculate until missing values and supported scenario checks have been validated.`
     }
   );
 
@@ -50,7 +45,7 @@ export function createCapitalGainsMcpServer(): McpServer {
     {
       title: "양도소득세 검토 시작",
       description:
-        "계약서 사진을 안전하게 요청하고 양도소득세 검토를 시작합니다."
+        "개인정보 없이 필요한 항목을 질문하며 양도소득세 검토를 시작합니다."
     },
     () => ({
       description: "양도소득세 검토 시작 안내",
@@ -59,7 +54,7 @@ export function createCapitalGainsMcpServer(): McpServer {
           role: "user",
           content: {
             type: "text",
-            text: INITIAL_CONTRACT_REQUEST
+            text: INITIAL_REVIEW_REQUEST
           }
         }
       ]
@@ -67,75 +62,18 @@ export function createCapitalGainsMcpServer(): McpServer {
   );
 
   server.registerTool(
-    "sanitize_contract_text",
-    {
-      title: "계약서 개인정보 마스킹",
-      description:
-        `${SERVICE_DISPLAY_NAME}는 계약서 사진에서 추출한 텍스트의 주민(외국인)등록번호, 이름, 전화번호, 계좌번호를 자동으로 마스킹합니다. ` +
-        `계약서 이미지를 분석할 때 반드시 다른 도구보다 먼저 호출하세요. ` +
-        `마스킹된 텍스트(sanitizedText)만 이후 검증·계산 도구에 사용하세요.`,
-      annotations: readOnlyAnnotations("Sanitize Personal Information from Contract Text"),
-      inputSchema: {
-        contractText: z
-          .string()
-          .min(1)
-          .describe("계약서 사진에서 OCR로 추출한 원문 텍스트")
-      }
-    },
-    async ({ contractText }) => {
-      const result = sanitizePersonalInfo(contractText);
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-        structuredContent: { result }
-      };
-    }
-  );
-
-  server.registerTool(
-    "extract_contract_case_fields",
-    {
-      title: "계약서 계산 입력값 추출",
-      description:
-        `${SERVICE_DISPLAY_NAME}는 sanitize_contract_text로 마스킹된 계약서 OCR 텍스트에서 양도일, 취득일, 양도가액, 취득가액, 자산 종류 등 계산 후보값을 추출합니다. ` +
-        `반환되는 partialCaseData는 validate_capital_gains_case의 caseData와 호환됩니다. ` +
-        `계약서 원문이 아니라 마스킹된 텍스트만 입력하세요.`,
-      annotations: readOnlyAnnotations("Extract Contract Fields for Capital Gains Case"),
-      inputSchema: {
-        sanitizedContractText: z
-          .string()
-          .min(1)
-          .describe("sanitize_contract_text가 반환한 마스킹된 계약서 OCR 텍스트"),
-        documentType: z
-          .enum(["transfer", "acquisition", "unknown"])
-          .default("unknown")
-          .describe("텍스트가 양도계약서인지 취득계약서인지 알 수 없으면 unknown")
-      }
-    },
-    async ({ sanitizedContractText, documentType }) => {
-      const result = extractContractCaseFields(
-        sanitizedContractText,
-        documentType
-      );
-      return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
-        structuredContent: { result }
-      };
-    }
-  );
-
-  server.registerTool(
     "prepare_capital_gains_case_checklist",
     {
       title: "계산 전 체크리스트 생성",
       description:
-        `${SERVICE_DISPLAY_NAME}는 계약서에서 추출한 partialCaseData 또는 사용자가 입력한 caseData를 기준으로 누락값, 1세대 1주택, 조정대상지역, 공동명의, 취득 방법, 동일연도 양도, 필요경비 증빙 체크리스트를 생성합니다. ` +
+        `${SERVICE_DISPLAY_NAME}는 사용자가 입력한 caseData를 기준으로 누락값, 1세대 1주택, 조정대상지역, 공동명의, 취득 방법, 동일연도 양도, 필요경비 증빙 체크리스트를 생성합니다. ` +
         `반환된 질문에 답을 채운 뒤 validate_capital_gains_case를 호출하세요. ` +
         `값을 임의로 추정하지 않고 기존 계산 도구의 입력 구조와 호환되는 필드명을 사용합니다.`,
       annotations: readOnlyAnnotations("Prepare Pre-calculation Checklist"),
       inputSchema: {
         caseData: z
           .record(z.string(), z.unknown())
-          .describe("계약서 추출값과 사용자 답변을 누적한 양도소득세 사건 데이터")
+          .describe("사용자 답변을 누적한 양도소득세 사건 데이터")
       }
     },
     async ({ caseData }) => {
@@ -152,7 +90,7 @@ export function createCapitalGainsMcpServer(): McpServer {
     {
       title: "양도소득세 사건 입력 검증",
       description:
-        `${SERVICE_DISPLAY_NAME}는 계산 전에 필수 입력값, 날짜, 소유 지분, 적용 세법 기준과 지원 범위를 검증합니다. 상담을 시작할 때 주민등록번호, 계좌번호, 서명과 도장을 가린 양도계약서 및 취득계약서 사진을 요청합니다. 다른 계산 도구보다 먼저 호출하며 누락된 값을 임의로 추정하지 않습니다.`,
+        `${SERVICE_DISPLAY_NAME}는 계산 전에 필수 입력값, 날짜, 소유 지분, 적용 세법 기준과 지원 범위를 검증합니다. 개인정보 없이 수집한 caseData를 기준으로 동작하며 누락된 값을 임의로 추정하지 않습니다.`,
       annotations: readOnlyAnnotations(
         "Validate a Korean Capital Gains Tax Case"
       ),

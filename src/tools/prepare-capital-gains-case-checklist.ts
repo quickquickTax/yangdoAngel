@@ -3,7 +3,7 @@ import { runValidation } from "./validate-capital-gains-case.js";
 export interface ChecklistItem {
   field: string;
   category:
-    | "contract"
+    | "transaction"
     | "asset"
     | "ownership"
     | "household"
@@ -58,28 +58,28 @@ const REQUIRED_ITEMS: Array<Omit<ChecklistItem, "status">> = [
   },
   {
     field: "transfer.date",
-    category: "contract",
+    category: "transaction",
     question: "양도일 또는 양도 잔금일은 언제입니까?",
     requiredForCalculation: true,
     reason: "보유기간, 장기보유특별공제, 규칙 적용기간 판단에 필요합니다."
   },
   {
     field: "transfer.price",
-    category: "contract",
+    category: "transaction",
     question: "양도가액은 얼마입니까?",
     requiredForCalculation: true,
     reason: "양도차익 계산의 기본 입력값입니다."
   },
   {
     field: "acquisition.date",
-    category: "contract",
+    category: "transaction",
     question: "취득일 또는 취득 잔금일은 언제입니까?",
     requiredForCalculation: true,
     reason: "보유기간과 장기보유특별공제 판단에 필요합니다."
   },
   {
     field: "acquisition.price",
-    category: "contract",
+    category: "transaction",
     question: "취득가액은 얼마입니까?",
     requiredForCalculation: true,
     reason: "양도차익 계산의 기본 입력값입니다."

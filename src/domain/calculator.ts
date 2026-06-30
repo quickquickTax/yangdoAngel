@@ -318,7 +318,7 @@ export function calculateCapitalGainsTax(
 
   warnings.push(rules.sourceNote);
   const assumptions = [
-    "입력값이 실제 계약서와 증빙자료에 일치한다고 가정합니다.",
+    "입력값이 실제 거래자료와 증빙자료에 일치한다고 가정합니다.",
     "동일 과세기간의 다른 양도 거래가 없다고 가정합니다."
   ];
 
