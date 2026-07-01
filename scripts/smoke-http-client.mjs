@@ -126,6 +126,7 @@ try {
     "normalize_expense_input",
     "normalize_date_input",
     "normalize_amount_input",
+    "resolve_acquisition_valuation",
     "prepare_capital_gains_case_checklist",
     "validate_capital_gains_case",
     "calculate_capital_gains_tax",
@@ -150,7 +151,7 @@ try {
       !annotations?.title ||
       annotations.readOnlyHint !== true ||
       annotations.destructiveHint !== false ||
-      annotations.openWorldHint !== false ||
+      annotations.openWorldHint !== (tool.name === "resolve_acquisition_valuation") ||
       annotations.idempotentHint !== true
     ) {
       throw new Error(`Tool ${tool.name} has incomplete PlayMCP annotations.`);

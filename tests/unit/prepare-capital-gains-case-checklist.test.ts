@@ -113,27 +113,26 @@ describe("prepareCapitalGainsCaseChecklist", () => {
     ]);
   });
 
-  it("flags unsupported acquisition methods before calculation", () => {
+  it("asks for gift valuation and relationship details before calculation", () => {
     const input = completeCase();
     input.acquisition.method = "gift";
     const result = prepareCapitalGainsCaseChecklist(input);
 
-    expect(result.status).toBe("unsupported_risk");
+    expect(result.status).toBe("needs_input");
     expect(result.checklistItems).toContainEqual(
       expect.objectContaining({
-        field: "acquisition.method",
-        status: "unsupported_risk"
+        field: "acquisition.valuation",
+        status: "missing"
       })
     );
-    expect(result.validationPreview.status).toBe("unsupported");
+    expect(result.validationPreview.status).toBe("invalid");
     expect(result.questionGroups).toContainEqual(
       expect.objectContaining({
-        category: "support",
-        unsupportedRiskCount: 1,
+        category: "transaction",
         questions: expect.arrayContaining([
           expect.objectContaining({
-            field: "acquisition.method",
-            status: "unsupported_risk"
+            field: "giftDetails.donorRelationship",
+            status: "missing"
           })
         ])
       })

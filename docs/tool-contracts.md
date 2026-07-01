@@ -22,6 +22,15 @@
 - `acquisition.date`
 - `acquisition.price`
 - `acquisition.method`
+- `inheritanceDetails.decedentAcquisitionDate`
+- `giftDetails.donorRelationship`
+- `giftDetails.donorDeceasedAtTransfer`
+- `giftDetails.expropriationExclusionPossible`
+- `giftDetails.donorOriginalAcquisition.date`
+- `giftDetails.donorOriginalAcquisition.price`
+- `giftDetails.giftTaxAssessment.calculatedTax`
+- `giftDetails.giftTaxAssessment.totalTaxableGiftValue`
+- `giftDetails.giftTaxAssessment.transferredAssetTaxableValue`
 - `expenses[]`
 - `ownership`
 - `household.houseCount`
@@ -176,7 +185,11 @@
 - `confidence`: `high`, `low`
 - `warnings`: 확인 또는 재입력이 필요한 사유
 
-## 12. `prepare_capital_gains_case_checklist`
+## 12. `resolve_acquisition_valuation`
+
+상속·증여 평가기간과 공식 실거래가·공시가격 후보를 조회합니다. `selectedValuation`, 선정 근거, 신뢰도, 확인 링크와 `caseDataPatch`를 반환하며 자동 조회가 불가능하면 `needs_user_confirmation`을 반환합니다. 공동주택 공시가격은 동·호와 취득연도가 일치해야 자동 선택되고, 유사매매사례는 전용면적·공동주택가격 차이의 5% 요건이 확인되지 않으면 후보만 반환합니다.
+
+## 13. `prepare_capital_gains_case_checklist`
 
 사용자가 직접 입력한 양도소득세 사건 데이터를 기준으로 계산 전 누락값과 위험 항목을 확인하고, 사용자에게 물어볼 질문을 주제별로 묶어 반환합니다.
 
@@ -216,7 +229,7 @@
 - `unsupportedRiskCount`: 현재 엔진 미지원 위험 질문 수
 - `questions`: 해당 그룹의 질문 항목 목록
 
-## 13. `validate_capital_gains_case`
+## 14. `validate_capital_gains_case`
 
 계산 전에 입력값과 지원 범위를 확인합니다.
 
@@ -236,7 +249,7 @@
 - `invalid`: 필수값 또는 형식 오류
 - `unsupported`: 현재 버전 미지원
 
-## 14. `calculate_capital_gains_tax`
+## 15. `calculate_capital_gains_tax`
 
 완전한 사건 데이터를 받아 결정론적으로 계산합니다.
 
@@ -250,6 +263,6 @@
 
 이 도구는 누락값을 채우거나 미지원 사건을 억지로 계산하지 않습니다.
 
-## 15. `list_supported_capital_gains_scenarios`
+## 16. `list_supported_capital_gains_scenarios`
 
 지원 규칙 기준일, 지원 사건, 미지원 사건을 반환합니다.

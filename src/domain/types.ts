@@ -32,6 +32,67 @@ export interface ExpenseInput {
   amount: number;
   evidenceStatus?: "available" | "missing" | "unknown";
   description?: string;
+  incurredBy?: "taxpayer" | "donor";
+}
+
+export type ValuationBasis =
+  | "own_transaction"
+  | "appraisal"
+  | "expropriation"
+  | "auction"
+  | "public_auction"
+  | "similar_transaction"
+  | "standard_price";
+
+export interface AcquisitionValuation {
+  amount: number;
+  basis: ValuationBasis;
+  status:
+    | "reported"
+    | "determined"
+    | "corrected"
+    | "api_estimated"
+    | "user_confirmed";
+  referenceDate: string;
+  sourceUrl?: string;
+  sourceId?: string;
+  confidence: "high" | "medium" | "low";
+  warnings?: string[];
+  appraisalDetails?: {
+    appraiserCount: number;
+    propertyStandardPrice?: number;
+    priceBasisDate: string;
+    reportDate: string;
+  };
+  similarPropertyMatch?: {
+    areaDiffPercent: number;
+    standardPriceDiffPercent: number;
+  };
+}
+
+export interface GiftTaxAssessment {
+  calculatedTax: number;
+  totalTaxableGiftValue: number;
+  transferredAssetTaxableValue: number;
+}
+
+export interface InheritanceDetails {
+  decedentAcquisitionDate: string;
+}
+
+export interface GiftDetails {
+  donorRelationship:
+    | "spouse"
+    | "lineal_ascendant_descendant"
+    | "other_related"
+    | "unrelated";
+  donorDeceasedAtTransfer: boolean;
+  expropriationExclusionPossible?: boolean;
+  donorOriginalAcquisition?: {
+    date: string;
+    price: number;
+  };
+  giftTaxAssessment?: GiftTaxAssessment;
 }
 
 export interface OwnerInput {
@@ -55,7 +116,10 @@ export interface CapitalGainsCase {
     date: string;
     price: number;
     method: "purchase" | "inheritance" | "gift" | "other";
+    valuation?: AcquisitionValuation;
   };
+  inheritanceDetails?: InheritanceDetails;
+  giftDetails?: GiftDetails;
   expenses: ExpenseInput[];
   ownership:
     | {
@@ -128,6 +192,12 @@ export interface SingleCalculationResult {
   exempt: boolean;
   exemptionReason?: string;
   holdingYears: number;
+  holdingPeriods: {
+    longTermDeductionYears: number;
+    rateYears: number;
+    longTermDeductionStartDate: string;
+    rateStartDate: string;
+  };
   transferGain: number;
   longTermDeduction: LongTermDeductionResult;
   longTermDeductionAmount: number;

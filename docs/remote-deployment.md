@@ -15,6 +15,14 @@
 | `HOST` | 아니요 | `0.0.0.0` | 수신 주소 |
 | `PORT` | 아니요 | `3000` | 수신 포트 |
 | `ALLOWED_HOSTS` | 운영 권장 | 없음 | 허용할 배포 호스트명, 쉼표 구분 |
+| `DATA_GO_KR_SERVICE_KEY` | 평가 조회 시 | 없음 | 국토교통부 실거래가 API 서비스 키 |
+| `JUSO_API_KEY` | 주소 조회 시 | 없음 | 도로명주소 검색 API 승인 키 |
+| `VWORLD_API_KEY` | 공시가격 조회 시 | 없음 | VWorld 데이터 API 키 |
+| `VWORLD_DATASET_APARTMENT_PRICE` | 해당 자산 조회 시 | 없음 | 공동주택가격 데이터셋 ID |
+| `VWORLD_DATASET_INDIVIDUAL_HOUSE_PRICE` | 해당 자산 조회 시 | 없음 | 개별주택가격 데이터셋 ID |
+| `VWORLD_DATASET_INDIVIDUAL_LAND_PRICE` | 해당 자산 조회 시 | 없음 | 개별공시지가 데이터셋 ID |
+| `VWORLD_DATASET_COMMERCIAL_STANDARD_PRICE` | 해당 자산 조회 시 | 없음 | 상업용·오피스텔 기준시가 데이터셋 ID |
+| `VWORLD_DATASET_BUILDING_STANDARD_PRICE` | 해당 자산 조회 시 | 없음 | 일반건물 기준시가 데이터셋 ID |
 
 비밀 키는 소스나 Docker 이미지에 넣지 말고 배포 플랫폼의 Secret 기능으로 저장합니다.
 

@@ -12,7 +12,71 @@ export const ExpenseSchema = z.object({
   ]),
   amount: z.number().int().nonnegative(),
   evidenceStatus: z.enum(["available", "missing", "unknown"]).optional(),
-  description: z.string().max(500).optional()
+  description: z.string().max(500).optional(),
+  incurredBy: z.enum(["taxpayer", "donor"]).optional()
+});
+
+const AcquisitionValuationSchema = z.object({
+  amount: z.number().int().positive(),
+  basis: z.enum([
+    "own_transaction",
+    "appraisal",
+    "expropriation",
+    "auction",
+    "public_auction",
+    "similar_transaction",
+    "standard_price"
+  ]),
+  status: z.enum([
+    "reported",
+    "determined",
+    "corrected",
+    "api_estimated",
+    "user_confirmed"
+  ]),
+  referenceDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  sourceUrl: z.string().url().optional(),
+  sourceId: z.string().max(200).optional(),
+  confidence: z.enum(["high", "medium", "low"]),
+  warnings: z.array(z.string().max(500)).optional(),
+  appraisalDetails: z
+    .object({
+      appraiserCount: z.number().int().positive(),
+      propertyStandardPrice: z.number().int().positive().optional(),
+      priceBasisDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      reportDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+    })
+    .optional(),
+  similarPropertyMatch: z
+    .object({
+      areaDiffPercent: z.number().nonnegative(),
+      standardPriceDiffPercent: z.number().nonnegative()
+    })
+    .optional()
+});
+
+const GiftDetailsSchema = z.object({
+  donorRelationship: z.enum([
+    "spouse",
+    "lineal_ascendant_descendant",
+    "other_related",
+    "unrelated"
+  ]),
+  donorDeceasedAtTransfer: z.boolean(),
+  expropriationExclusionPossible: z.boolean().optional(),
+  donorOriginalAcquisition: z
+    .object({
+      date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      price: z.number().int().positive()
+    })
+    .optional(),
+  giftTaxAssessment: z
+    .object({
+      calculatedTax: z.number().int().nonnegative(),
+      totalTaxableGiftValue: z.number().int().nonnegative(),
+      transferredAssetTaxableValue: z.number().int().nonnegative()
+    })
+    .optional()
 });
 
 export const OwnerSchema = z.object({
@@ -40,8 +104,15 @@ export const CapitalGainsCaseSchema = z.object({
   acquisition: z.object({
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     price: z.number().int().positive(),
-    method: z.enum(["purchase", "inheritance", "gift", "other"])
+    method: z.enum(["purchase", "inheritance", "gift", "other"]),
+    valuation: AcquisitionValuationSchema.optional()
   }),
+  inheritanceDetails: z
+    .object({
+      decedentAcquisitionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+    })
+    .optional(),
+  giftDetails: GiftDetailsSchema.optional(),
   expenses: z.array(ExpenseSchema).default([]),
   ownership: z.discriminatedUnion("type", [
     z.object({

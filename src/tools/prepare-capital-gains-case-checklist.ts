@@ -1,4 +1,5 @@
 import { runValidation } from "./validate-capital-gains-case.js";
+import { isWithinGiftCarryoverPeriod } from "../domain/acquisition.js";
 
 export interface ChecklistItem {
   field: string;
@@ -160,7 +161,7 @@ const REQUIRED_ITEMS: Array<Omit<ChecklistItem, "status">> = [
     category: "support",
     question: "취득 방법은 매매, 상속, 증여 중 무엇입니까?",
     requiredForCalculation: true,
-    reason: "현재 계산 엔진은 매매 취득만 지원합니다."
+    reason: "취득 방법에 따라 취득가액과 보유기간 계산 기준이 달라집니다."
   },
   {
     field: "asset.subType",
@@ -292,19 +293,101 @@ export function prepareCapitalGainsCaseChecklist(
   ).map((item) => ({ ...item, status: "missing" }));
 
   const acquisitionMethod = getNested(caseData, "acquisition.method");
-  if (
-    acquisitionMethod &&
-    acquisitionMethod !== "purchase" &&
-    !checklistItems.some((item) => item.field === "acquisition.method")
-  ) {
+  if (acquisitionMethod === "other") {
     checklistItems.push({
       field: "acquisition.method",
       category: "support",
-      question: "상속·증여 등 매매 외 취득은 세무전문가 검토 대상으로 전환해야 합니다.",
+      question: "부담부증여·교환 등 기타 취득은 세무전문가 검토 대상으로 전환해야 합니다.",
       requiredForCalculation: true,
-      reason: "현재 계산 엔진은 매매 외 취득을 지원하지 않습니다.",
+      reason: "현재 계산 엔진은 기타 취득을 지원하지 않습니다.",
       status: "unsupported_risk"
     });
+  }
+
+  if (
+    (acquisitionMethod === "inheritance" || acquisitionMethod === "gift") &&
+    !hasNested(caseData, "acquisition.valuation")
+  ) {
+    checklistItems.push({
+      field: "acquisition.valuation",
+      category: "transaction",
+      question: "상속·증여 당시 신고·결정가액이 있습니까? 없다면 부동산 주소로 평가가액을 조회해도 될까요?",
+      requiredForCalculation: true,
+      reason: "상속·증여 취득가액은 평가기준일 현재 확인된 평가액을 사용합니다.",
+      status: "missing"
+    });
+  }
+
+  if (
+    acquisitionMethod === "inheritance" &&
+    !hasNested(caseData, "inheritanceDetails.decedentAcquisitionDate")
+  ) {
+    checklistItems.push({
+      field: "inheritanceDetails.decedentAcquisitionDate",
+      category: "transaction",
+      question: "피상속인이 해당 재산을 최초로 취득한 날은 언제입니까?",
+      requiredForCalculation: true,
+      reason: "상속재산의 세율 적용 보유기간은 피상속인 취득일부터 계산합니다.",
+      status: "missing"
+    });
+  }
+
+  if (acquisitionMethod === "gift") {
+    if (!hasNested(caseData, "giftDetails.donorRelationship")) {
+      checklistItems.push({
+        field: "giftDetails.donorRelationship",
+        category: "transaction",
+        question: "증여자는 배우자, 직계존비속, 기타 특수관계인, 무관계인 중 누구입니까?",
+        requiredForCalculation: true,
+        reason: "배우자·직계존비속 증여는 이월과세 여부를 확인해야 합니다.",
+        status: "missing"
+      });
+    }
+    if (!hasNested(caseData, "giftDetails.donorDeceasedAtTransfer")) {
+      checklistItems.push({
+        field: "giftDetails.donorDeceasedAtTransfer",
+        category: "support",
+        question: "양도일 현재 증여자가 사망했습니까?",
+        requiredForCalculation: true,
+        reason: "증여자 사망은 이월과세 배제 검토 사유입니다.",
+        status: "missing"
+      });
+    }
+    const relationship = getNested(caseData, "giftDetails.donorRelationship");
+    const acquisitionDate = getNested(caseData, "acquisition.date");
+    const transferDate = getNested(caseData, "transfer.date");
+    let carryoverPossible = false;
+    if (
+      (relationship === "spouse" || relationship === "lineal_ascendant_descendant") &&
+      typeof acquisitionDate === "string" &&
+      typeof transferDate === "string"
+    ) {
+      try {
+        carryoverPossible = isWithinGiftCarryoverPeriod(acquisitionDate, transferDate);
+      } catch {
+        // 날짜 검증 질문은 별도로 생성된다.
+      }
+    }
+    if (carryoverPossible && !hasNested(caseData, "giftDetails.donorOriginalAcquisition")) {
+      checklistItems.push({
+        field: "giftDetails.donorOriginalAcquisition",
+        category: "transaction",
+        question: "증여자의 최초 취득일과 취득가액은 각각 얼마입니까?",
+        requiredForCalculation: true,
+        reason: "이월과세 적용 시 증여자의 원취득 정보로 양도차익과 보유기간을 계산합니다.",
+        status: "missing"
+      });
+    }
+    if (carryoverPossible && !hasNested(caseData, "giftDetails.giftTaxAssessment")) {
+      checklistItems.push({
+        field: "giftDetails.giftTaxAssessment",
+        category: "expense",
+        question: "증여세 산출세액, 전체 증여세 과세가액, 이 재산의 증여 과세가액은 각각 얼마입니까? 납부세액이 없으면 0이라고 알려주세요.",
+        requiredForCalculation: true,
+        reason: "이월과세 시 공제할 증여세 상당액을 법정 비율로 계산합니다.",
+        status: "missing"
+      });
+    }
   }
 
   if (

@@ -16,6 +16,15 @@ export const NORMALIZABLE_CASE_FIELDS = [
   "acquisition.date",
   "acquisition.price",
   "acquisition.method",
+  "inheritanceDetails.decedentAcquisitionDate",
+  "giftDetails.donorRelationship",
+  "giftDetails.donorDeceasedAtTransfer",
+  "giftDetails.expropriationExclusionPossible",
+  "giftDetails.donorOriginalAcquisition.date",
+  "giftDetails.donorOriginalAcquisition.price",
+  "giftDetails.giftTaxAssessment.calculatedTax",
+  "giftDetails.giftTaxAssessment.totalTaxableGiftValue",
+  "giftDetails.giftTaxAssessment.transferredAssetTaxableValue",
   "expenses[]",
   "ownership",
   "household.houseCount",
@@ -99,7 +108,9 @@ export function normalizeCaseInput(
       );
     }
     case "transfer.date":
-    case "acquisition.date": {
+    case "acquisition.date":
+    case "inheritanceDetails.decedentAcquisitionDate":
+    case "giftDetails.donorOriginalAcquisition.date": {
       const result = normalizeDateInput(rawValue);
       const readyForCaseData = result.readyForCaseData && result.kind === "single";
       const warnings = [...result.warnings];
@@ -118,7 +129,11 @@ export function normalizeCaseInput(
       );
     }
     case "transfer.price":
-    case "acquisition.price": {
+    case "acquisition.price":
+    case "giftDetails.donorOriginalAcquisition.price":
+    case "giftDetails.giftTaxAssessment.calculatedTax":
+    case "giftDetails.giftTaxAssessment.totalTaxableGiftValue":
+    case "giftDetails.giftTaxAssessment.transferredAssetTaxableValue": {
       const result = normalizeAmountInput(rawValue);
       return buildResult(
         rawValue,
@@ -142,6 +157,28 @@ export function normalizeCaseInput(
         result.confidence,
         result.warnings,
         result
+      );
+    }
+    case "giftDetails.donorRelationship": {
+      const value = rawValue.trim().replace(/\s+/g, "");
+      const relationship = /배우자|남편|아내|부인/.test(value)
+        ? "spouse"
+        : /직계|부모|아버지|어머니|아들|딸|자녀|조부|조모|손자|손녀/.test(value)
+          ? "lineal_ascendant_descendant"
+          : /특수관계|친족|형제|자매|사촌/.test(value)
+            ? "other_related"
+            : /무관계|관계없|타인/.test(value)
+              ? "unrelated"
+              : null;
+      return buildResult(
+        rawValue,
+        targetField,
+        relationship,
+        relationship !== null,
+        "normalize_case_input",
+        relationship ? "high" : "low",
+        relationship ? [] : ["증여자 관계를 배우자, 직계존비속, 기타 특수관계인, 무관계 중 하나로 확인해 주세요."],
+        { relationship }
       );
     }
     case "expenses[]": {
@@ -198,7 +235,9 @@ export function normalizeCaseInput(
     }
     case "household.isAdjustedArea":
     case "household.oneHouseExemptionClaimed":
-    case "annualContext.otherTransfersExist": {
+    case "annualContext.otherTransfersExist":
+    case "giftDetails.donorDeceasedAtTransfer":
+    case "giftDetails.expropriationExclusionPossible": {
       const result = normalizeBooleanInput(rawValue);
       return buildResult(
         rawValue,

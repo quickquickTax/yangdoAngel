@@ -22,11 +22,12 @@ import { normalizeExemptionVerificationInput } from "./tools/normalize-exemption
 import { normalizeExpenseInput } from "./tools/normalize-expense-input.js";
 import { normalizeOwnershipInput } from "./tools/normalize-ownership-input.js";
 import { prepareCapitalGainsCaseChecklist } from "./tools/prepare-capital-gains-case-checklist.js";
+import { resolveAcquisitionValuation } from "./tools/resolve-acquisition-valuation.js";
 
 export const SERVICE_DISPLAY_NAME = "바로바로 양도소득세";
 
 export const INITIAL_REVIEW_REQUEST =
-  "양도소득세 검토를 시작하려면 개인정보 없이 계산에 필요한 정보를 질문으로 수집하세요. " +
+  "양도소득세 검토를 시작하려면 개인정보 중 직접 식별정보 없이 계산에 필요한 정보를 질문으로 수집하세요. 상속·증여 평가가액 조회가 필요한 경우에만 부동산 주소를 받으세요. " +
   "필수 항목은 양도일, 양도가액, 취득일, 취득가액, 취득 방법, 자산 종류, 소유 형태, 세대 주택 수, 거주기간, 조정대상지역 여부, 1세대 1주택 비과세 요청 여부, 같은 과세연도 다른 양도 여부입니다. " +
   "금액은 7.5억, 7억5000만, 750,000,000처럼 편한 형식으로 답해도 됩니다. " +
   "날짜도 2026.01.01, 260101, 20250101~20260101처럼 편한 형식으로 답해도 됩니다. " +
@@ -43,6 +44,13 @@ function readOnlyAnnotations(title: string) {
   };
 }
 
+function externalReadAnnotations(title: string) {
+  return {
+    ...readOnlyAnnotations(title),
+    openWorldHint: true
+  };
+}
+
 export function createCapitalGainsMcpServer(): McpServer {
   const server = new McpServer(
     {
@@ -56,6 +64,7 @@ export function createCapitalGainsMcpServer(): McpServer {
         `양도일, 취득일, 거주기간 산정용 날짜가 다양한 형식으로 입력되면 normalize_date_input을 먼저 호출해 YYYY-MM-DD 형식으로 변환하세요. ` +
         `자산 종류, 취득 방법, 예/아니오, 주택 수, 거주기간, 비과세 검증 상태, 소유 형태, 필요경비가 자연어로 입력되면 대응하는 normalize_* 도구를 먼저 호출하세요. ` +
         `입력값의 목적 caseData 필드를 알고 있으면 normalize_case_input을 사용해 정규화 결과와 caseDataPatch를 함께 받으세요. ` +
+        `상속·증여 취득이고 확정 평가가액이 없으면 resolve_acquisition_valuation을 먼저 호출하고, 선택된 평가가액과 공식 확인 링크를 사용자에게 안내하세요. ` +
         `사용자 답변을 caseData에 누적한 뒤 prepare_capital_gains_case_checklist와 validate_capital_gains_case를 사용해 누락값과 지원 범위를 확인하세요. ` +
         `Do not calculate until missing values and supported scenario checks have been validated.`
     }
@@ -80,6 +89,79 @@ export function createCapitalGainsMcpServer(): McpServer {
         }
       ]
     })
+  );
+
+  server.registerTool(
+    "resolve_acquisition_valuation",
+    {
+      title: "상속·증여 취득가액 조회",
+      description:
+        `${SERVICE_DISPLAY_NAME}는 상속·증여 당시 부동산의 평가기간을 계산하고 공식 실거래가·공시가격 API에서 평가가액 후보를 조회해 예상 취득가액, 선정 근거, 신뢰도, 확인 링크와 caseDataPatch를 반환합니다. 확정 신고가액이 아닌 API 추정값은 예상세액 계산에만 사용합니다.`,
+      annotations: externalReadAnnotations("Resolve Inherited or Gifted Property Valuation"),
+      inputSchema: {
+        acquisitionMethod: z.enum(["inheritance", "gift"]),
+        acquisitionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        property: z.object({
+          type: z.enum([
+            "apartment",
+            "row_house",
+            "detached_house",
+            "land",
+            "officetel",
+            "commercial_building",
+            "general_building"
+          ]),
+          address: z.string().min(1).max(300),
+          legalDistrictCode: z.string().regex(/^\d{5}$/).optional(),
+          pnu: z.string().regex(/^\d{19}$/).optional(),
+          lotNumber: z.string().max(50).optional(),
+          complexName: z.string().max(200).optional(),
+          exclusiveAreaSquareMeters: z.number().positive().optional(),
+          unitName: z.string().max(100).optional()
+        }),
+        knownEvidence: z
+          .array(
+            z.object({
+              amount: z.number().int().positive(),
+              basis: z.enum([
+                "own_transaction",
+                "appraisal",
+                "expropriation",
+                "auction",
+                "public_auction",
+                "similar_transaction",
+                "standard_price"
+              ]),
+              status: z.enum(["reported", "determined", "corrected", "user_confirmed"]),
+              referenceDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+              sourceUrl: z.string().url().optional(),
+              sourceId: z.string().max(200).optional(),
+              appraisalDetails: z
+                .object({
+                  appraiserCount: z.number().int().positive(),
+                  propertyStandardPrice: z.number().int().positive().optional(),
+                  priceBasisDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+                  reportDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+                })
+                .optional(),
+              similarPropertyMatch: z
+                .object({
+                  areaDiffPercent: z.number().nonnegative(),
+                  standardPriceDiffPercent: z.number().nonnegative()
+                })
+                .optional()
+            })
+          )
+          .optional()
+      }
+    },
+    async (input) => {
+      const result = await resolveAcquisitionValuation(input);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        structuredContent: { result }
+      };
+    }
   );
 
   server.registerTool(
@@ -362,7 +444,7 @@ export function createCapitalGainsMcpServer(): McpServer {
     {
       title: "양도소득세 예상 계산",
       description:
-        `${SERVICE_DISPLAY_NAME}는 검증이 완료된 부동산 양도 사건을 바탕으로 양도소득세와 개인지방소득세 예상액을 계산합니다. 같은 해 복수 양도나 상속·증여 취득 등 현재 지원하지 않는 사건은 계산하지 않습니다. 결과는 검토용 예상액이며 확정 신고세액이 아닙니다.`,
+        `${SERVICE_DISPLAY_NAME}는 검증이 완료된 매매·상속·증여 취득 부동산 양도 사건을 바탕으로 양도소득세와 개인지방소득세 예상액을 계산합니다. 같은 해 복수 양도, 부담부증여, 상속주택 특례 등 현재 지원하지 않는 사건은 계산하지 않습니다. 결과는 검토용 예상액이며 확정 신고세액이 아닙니다.`,
       annotations: readOnlyAnnotations(
         "Calculate Estimated Korean Capital Gains Tax"
       ),

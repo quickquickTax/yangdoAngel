@@ -11,6 +11,7 @@ import type {
 import type { CapitalGainsRules } from "../rules/rule-registry.js";
 import { getRules } from "../rules/rule-registry.js";
 import { validateCapitalGainsCase } from "./validation.js";
+import { isWithinGiftCarryoverPeriod } from "./acquisition.js";
 
 function citations(rules: CapitalGainsRules, key: string): Citation[] {
   return (rules.citations[key] ?? []).map((source) => {
@@ -21,13 +22,87 @@ function citations(rules: CapitalGainsRules, key: string): Citation[] {
   });
 }
 
-function sumExpenses(input: CapitalGainsCase): number {
+function sumExpenses(input: CapitalGainsCase, includeDonor = false): number {
   return input.expenses
     .filter(
       (expense) =>
-        expense.type !== "other" && expense.evidenceStatus === "available"
+        expense.type !== "other" &&
+        expense.evidenceStatus === "available" &&
+        (includeDonor || expense.incurredBy !== "donor")
     )
     .reduce((sum, expense) => sum + expense.amount, 0);
+}
+
+interface AcquisitionTreatment {
+  acquisitionPrice: number;
+  longTermDeductionStartDate: string;
+  rateStartDate: string;
+  giftTaxEquivalent: number;
+  mode: "purchase" | "inheritance" | "gift" | "gift_carryover";
+}
+
+function calculateGiftTaxEquivalent(input: CapitalGainsCase): number {
+  const assessment = input.giftDetails?.giftTaxAssessment;
+  if (!assessment || assessment.calculatedTax === 0) return 0;
+  if (
+    assessment.totalTaxableGiftValue <= 0 ||
+    assessment.transferredAssetTaxableValue <= 0
+  ) {
+    return 0;
+  }
+  return Math.floor(
+    assessment.calculatedTax *
+      Math.min(
+        1,
+        assessment.transferredAssetTaxableValue /
+          assessment.totalTaxableGiftValue
+      )
+  );
+}
+
+function resolveAcquisitionTreatment(input: CapitalGainsCase): AcquisitionTreatment {
+  if (input.acquisition.method === "inheritance") {
+    return {
+      acquisitionPrice: input.acquisition.price,
+      longTermDeductionStartDate: input.acquisition.date,
+      rateStartDate: input.inheritanceDetails!.decedentAcquisitionDate,
+      giftTaxEquivalent: 0,
+      mode: "inheritance"
+    };
+  }
+
+  if (input.acquisition.method === "gift") {
+    const relationship = input.giftDetails!.donorRelationship;
+    const carryover =
+      (relationship === "spouse" ||
+        relationship === "lineal_ascendant_descendant") &&
+      isWithinGiftCarryoverPeriod(input.acquisition.date, input.transfer.date);
+    if (carryover) {
+      const original = input.giftDetails!.donorOriginalAcquisition!;
+      return {
+        acquisitionPrice: original.price,
+        longTermDeductionStartDate: original.date,
+        rateStartDate: original.date,
+        giftTaxEquivalent: calculateGiftTaxEquivalent(input),
+        mode: "gift_carryover"
+      };
+    }
+    return {
+      acquisitionPrice: input.acquisition.price,
+      longTermDeductionStartDate: input.acquisition.date,
+      rateStartDate: input.acquisition.date,
+      giftTaxEquivalent: 0,
+      mode: "gift"
+    };
+  }
+
+  return {
+    acquisitionPrice: input.acquisition.price,
+    longTermDeductionStartDate: input.acquisition.date,
+    rateStartDate: input.acquisition.date,
+    giftTaxEquivalent: 0,
+    mode: "purchase"
+  };
 }
 
 function calculateSingle(
@@ -39,21 +114,36 @@ function calculateSingle(
     necessaryExpense: number;
     basicDeductionAlreadyUsed: number;
     grossTransferPrice: number;
+    longTermDeductionStartDate: string;
+    rateStartDate: string;
     ownerId?: string;
     sharePercent?: number;
   }
 ): SingleCalculationResult {
   const holdingYears = calculateFullHoldingYears(
-    input.acquisition.date,
+    allocated.longTermDeductionStartDate,
     input.transfer.date
   );
+  const rateHoldingYears = calculateFullHoldingYears(
+    allocated.rateStartDate,
+    input.transfer.date
+  );
+  const holdingPeriods = {
+    longTermDeductionYears: holdingYears,
+    rateYears: rateHoldingYears,
+    longTermDeductionStartDate: allocated.longTermDeductionStartDate,
+    rateStartDate: allocated.rateStartDate
+  };
   const steps: CalculationStep[] = [
     {
       stepCode: "HOLDING_PERIOD",
       label: "보유기간",
       amount: null,
       operator: "info",
-      detail: `${input.acquisition.date} ~ ${input.transfer.date}: 만 ${holdingYears}년`,
+      detail:
+        allocated.longTermDeductionStartDate === allocated.rateStartDate
+          ? `${allocated.longTermDeductionStartDate} ~ ${input.transfer.date}: 만 ${holdingYears}년`
+          : `장기보유공제 ${allocated.longTermDeductionStartDate}부터 만 ${holdingYears}년, 세율 ${allocated.rateStartDate}부터 만 ${rateHoldingYears}년`,
       citations: citations(rules, "holdingPeriod")
     }
   ];
@@ -85,6 +175,7 @@ function calculateSingle(
       exempt: true,
       exemptionReason,
       holdingYears,
+      holdingPeriods,
       transferGain: 0,
       longTermDeduction: {
         applicable: false,
@@ -146,6 +237,7 @@ function calculateSingle(
       exempt: false,
       ...(exemptionReason ? { exemptionReason } : {}),
       holdingYears,
+      holdingPeriods,
       transferGain,
       longTermDeduction: {
         applicable: false,
@@ -242,7 +334,7 @@ function calculateSingle(
 
   const rateResult = calculateRateTax({
     taxBase,
-    holdingYears,
+    holdingYears: rateHoldingYears,
     assetSubType: input.asset.subType,
     houseCount: input.household.houseCount,
     isAdjustedArea: input.household.isAdjustedArea,
@@ -286,6 +378,7 @@ function calculateSingle(
     exempt: false,
     ...(exemptionReason ? { exemptionReason } : {}),
     holdingYears,
+    holdingPeriods,
     transferGain,
     longTermDeduction,
     longTermDeductionAmount,
@@ -300,6 +393,44 @@ function calculateSingle(
   };
 }
 
+function calculateTreatmentTotal(
+  input: CapitalGainsCase,
+  rules: CapitalGainsRules,
+  treatment: AcquisitionTreatment
+): number {
+  const necessaryExpense =
+    sumExpenses(input, treatment.mode === "gift_carryover") +
+    treatment.giftTaxEquivalent;
+  if (input.ownership.type === "solo") {
+    return calculateSingle(input, rules, {
+      transferPrice: input.transfer.price,
+      acquisitionPrice: treatment.acquisitionPrice,
+      necessaryExpense,
+      basicDeductionAlreadyUsed: input.ownership.basicDeductionAlreadyUsed ?? 0,
+      grossTransferPrice: input.transfer.price,
+      longTermDeductionStartDate: treatment.longTermDeductionStartDate,
+      rateStartDate: treatment.rateStartDate
+    }).totalTax;
+  }
+  return input.ownership.owners.reduce((sum, owner) => {
+    const ratio = owner.sharePercent / 100;
+    return (
+      sum +
+      calculateSingle(input, rules, {
+        transferPrice: Math.floor(input.transfer.price * ratio),
+        acquisitionPrice: Math.floor(treatment.acquisitionPrice * ratio),
+        necessaryExpense: Math.floor(necessaryExpense * ratio),
+        basicDeductionAlreadyUsed: owner.basicDeductionAlreadyUsed ?? 0,
+        grossTransferPrice: input.transfer.price,
+        ownerId: owner.ownerId,
+        sharePercent: owner.sharePercent,
+        longTermDeductionStartDate: treatment.longTermDeductionStartDate,
+        rateStartDate: treatment.rateStartDate
+      }).totalTax
+    );
+  }, 0);
+}
+
 export function calculateCapitalGainsTax(
   input: CapitalGainsCase
 ): CapitalGainsCalculationResult {
@@ -311,12 +442,36 @@ export function calculateCapitalGainsTax(
   }
 
   const rules = getRules(input.ruleDate);
-  const necessaryExpense = sumExpenses(input);
+  const treatment = resolveAcquisitionTreatment(input);
+  if (treatment.mode === "gift_carryover") {
+    const normalGiftTreatment: AcquisitionTreatment = {
+      acquisitionPrice: input.acquisition.price,
+      longTermDeductionStartDate: input.acquisition.date,
+      rateStartDate: input.acquisition.date,
+      giftTaxEquivalent: 0,
+      mode: "gift"
+    };
+    const carryoverTax = calculateTreatmentTotal(input, rules, treatment);
+    const normalGiftTax = calculateTreatmentTotal(input, rules, normalGiftTreatment);
+    if (carryoverTax < normalGiftTax) {
+      throw new Error(
+        `GIFT_CARRYOVER_TAX_REVERSAL_REVIEW_REQUIRED: 이월과세 적용세액 ${carryoverTax}원이 미적용세액 ${normalGiftTax}원보다 적어 배제 검토가 필요합니다.`
+      );
+    }
+  }
+  const necessaryExpense =
+    sumExpenses(input, treatment.mode === "gift_carryover") +
+    treatment.giftTaxEquivalent;
   const warnings = validation.issues
     .filter((issue) => issue.severity === "warning")
     .map((issue) => issue.message);
 
   warnings.push(rules.sourceNote);
+  if (input.acquisition.valuation?.status === "api_estimated") {
+    warnings.push(
+      `취득가액 ${input.acquisition.price.toLocaleString("ko-KR")}원은 공공 API 자료로 추정한 금액입니다. ${input.acquisition.valuation.sourceUrl ?? "공식 조회 사이트"}에서 확인해 주세요.`
+    );
+  }
   const assumptions = [
     "입력값이 실제 거래자료와 증빙자료에 일치한다고 가정합니다.",
     "동일 과세기간의 다른 양도 거래가 없다고 가정합니다."
@@ -325,10 +480,12 @@ export function calculateCapitalGainsTax(
   if (input.ownership.type === "solo") {
     const result = calculateSingle(input, rules, {
       transferPrice: input.transfer.price,
-      acquisitionPrice: input.acquisition.price,
+      acquisitionPrice: treatment.acquisitionPrice,
       necessaryExpense,
       basicDeductionAlreadyUsed: input.ownership.basicDeductionAlreadyUsed ?? 0,
-      grossTransferPrice: input.transfer.price
+      grossTransferPrice: input.transfer.price,
+      longTermDeductionStartDate: treatment.longTermDeductionStartDate,
+      rateStartDate: treatment.rateStartDate
     });
     return {
       status:
@@ -354,12 +511,14 @@ export function calculateCapitalGainsTax(
     const ratio = owner.sharePercent / 100;
     return calculateSingle(input, rules, {
       transferPrice: Math.floor(input.transfer.price * ratio),
-      acquisitionPrice: Math.floor(input.acquisition.price * ratio),
+      acquisitionPrice: Math.floor(treatment.acquisitionPrice * ratio),
       necessaryExpense: Math.floor(necessaryExpense * ratio),
       basicDeductionAlreadyUsed: owner.basicDeductionAlreadyUsed ?? 0,
       grossTransferPrice: input.transfer.price,
       ownerId: owner.ownerId,
-      sharePercent: owner.sharePercent
+      sharePercent: owner.sharePercent,
+      longTermDeductionStartDate: treatment.longTermDeductionStartDate,
+      rateStartDate: treatment.rateStartDate
     });
   });
 
@@ -372,10 +531,12 @@ export function calculateCapitalGainsTax(
 
   const soloComparison = calculateSingle(input, rules, {
     transferPrice: input.transfer.price,
-    acquisitionPrice: input.acquisition.price,
+    acquisitionPrice: treatment.acquisitionPrice,
     necessaryExpense,
     basicDeductionAlreadyUsed: 0,
-    grossTransferPrice: input.transfer.price
+    grossTransferPrice: input.transfer.price,
+    longTermDeductionStartDate: treatment.longTermDeductionStartDate,
+    rateStartDate: treatment.rateStartDate
   });
 
   return {

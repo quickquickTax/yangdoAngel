@@ -37,6 +37,7 @@ try {
     "normalize_expense_input",
     "normalize_date_input",
     "normalize_amount_input",
+    "resolve_acquisition_valuation",
     "prepare_capital_gains_case_checklist",
     "validate_capital_gains_case",
     "calculate_capital_gains_tax",
@@ -62,6 +63,7 @@ try {
     normalize_expense_input: "필요경비",
     normalize_date_input: "날짜 표현",
     normalize_amount_input: "금액 표현",
+    resolve_acquisition_valuation: "평가가액",
     prepare_capital_gains_case_checklist: "누락값",
     validate_capital_gains_case: "필수 입력값",
     calculate_capital_gains_tax: "예상액",
@@ -82,7 +84,7 @@ try {
       !annotations?.title ||
       annotations.readOnlyHint !== true ||
       annotations.destructiveHint !== false ||
-      annotations.openWorldHint !== false ||
+      annotations.openWorldHint !== (tool.name === "resolve_acquisition_valuation") ||
       annotations.idempotentHint !== true
     ) {
       throw new Error(`Tool ${tool.name} has incomplete PlayMCP annotations.`);
@@ -111,6 +113,29 @@ try {
     promptText.includes("정규화 도구")
   ) {
     throw new Error("The start prompt does not match the manual-input flow.");
+  }
+
+  const valuation = await client.callTool({
+    name: "resolve_acquisition_valuation",
+    arguments: {
+      acquisitionMethod: "inheritance",
+      acquisitionDate: "2026-01-01",
+      property: { type: "apartment", address: "서울시 예시구 예시로 1" },
+      knownEvidence: [
+        {
+          amount: 400000000,
+          basis: "standard_price",
+          status: "determined",
+          referenceDate: "2026-01-01"
+        }
+      ]
+    }
+  });
+  if (
+    valuation.structuredContent?.result?.selectedValuation?.amount !== 400000000 ||
+    valuation.structuredContent?.result?.caseDataPatch?.acquisition?.price !== 400000000
+  ) {
+    throw new Error("Acquisition valuation resolution failed.");
   }
 
   const caseInput = await client.callTool({
